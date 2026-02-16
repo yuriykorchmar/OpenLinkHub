@@ -40,6 +40,14 @@ type AnalogData struct {
 	Points      map[int]common.CurveData `json:"points"`
 }
 
+type StickState struct {
+	lastX      int16
+	lastY      int16
+	lastOutX   int16
+	lastOutY   int16
+	centerSent bool
+}
+
 type DeviceProfile struct {
 	Active                      bool
 	Path                        string
@@ -121,6 +129,10 @@ type Device struct {
 	rightTriggerArmed     bool
 	leftTriggerPressed    bool
 	rightTriggerPressed   bool
+	leftTriggerMode       bool
+	rightTriggerMode      bool
+	leftStick             StickState
+	rightStick            StickState
 }
 
 var (
@@ -241,6 +253,7 @@ func Init(vendorId, slipstreamId, productId uint16, dev *hid.Device, endpoint by
 			1:  "Media Keys",
 			2:  "DPI",
 			3:  "Keyboard",
+			4:  "Controller",
 			8:  "Sniper",
 			9:  "Mouse",
 			10: "Macro",
@@ -248,6 +261,7 @@ func Init(vendorId, slipstreamId, productId uint16, dev *hid.Device, endpoint by
 		ThumbStickModes: map[int]string{
 			0: "None",
 			1: "Mouse",
+			2: "Thumbstick",
 		},
 		InputActions:      inputmanager.GetInputActions(),
 		keyAssignmentFile: "/database/key-assignments/scufenvisionproV2.json",
@@ -456,6 +470,22 @@ func (d *Device) SaveControllerZoneColors(zoneColors map[int]rgb.Color) uint8 {
 // UpdateDeviceKeyAssignment will update device key assignments
 func (d *Device) UpdateDeviceKeyAssignment(keyIndex int, keyAssignment inputmanager.KeyAssignment) uint8 {
 	if val, ok := d.KeyAssignment[keyIndex]; ok {
+		if keyIndex == 2048 {
+			if keyAssignment.ActionCommand == 134 {
+				d.leftTriggerMode = true
+			} else {
+				d.leftTriggerMode = false
+			}
+		}
+
+		if keyIndex == 4096 {
+			if keyAssignment.ActionCommand == 135 {
+				d.rightTriggerMode = true
+			} else {
+				d.rightTriggerMode = false
+			}
+		}
+
 		val.Default = keyAssignment.Default
 		val.ActionHold = keyAssignment.ActionHold
 		val.ActionType = keyAssignment.ActionType
@@ -932,6 +962,23 @@ func (d *Device) loadKeyAssignments() {
 		err = file.Close()
 		if err != nil {
 			logger.Log(logger.Fields{"location": keyAssignmentsFile, "serial": d.Serial}).Warn("Failed to close file handle")
+		}
+
+		for k, v := range d.KeyAssignment {
+			if k == 2048 {
+				if v.ActionCommand == 134 {
+					d.leftTriggerMode = true
+				} else {
+					d.leftTriggerMode = false
+				}
+			}
+			if k == 4096 {
+				if v.ActionCommand == 135 {
+					d.rightTriggerMode = true
+				} else {
+					d.rightTriggerMode = false
+				}
+			}
 		}
 	} else {
 		var keyAssignment = map[int]inputmanager.KeyAssignment{
@@ -2186,32 +2233,52 @@ func (d *Device) ProcessTriggers(packet []byte) {
 	left := binary.LittleEndian.Uint16(packet[4:6])
 	right := binary.LittleEndian.Uint16(packet[6:8])
 
-	if left >= triggerMax {
-		if d.leftTriggerArmed {
-			d.leftTriggerArmed = false
-			d.leftTriggerPressed = true
-			d.TriggerKeyAssignment(2048)
+	if d.leftTriggerMode {
+		inputmanager.InputControlGamepadTriggers(
+			int32(left),
+			int32(right),
+			0,
+			d.DeviceProfile.AnalogData[2].DeadZoneMin,
+			d.DeviceProfile.AnalogData[2].DeadZoneMax,
+		)
+	} else {
+		if left >= triggerMax {
+			if d.leftTriggerArmed {
+				d.leftTriggerArmed = false
+				d.leftTriggerPressed = true
+				d.TriggerKeyAssignment(2048)
+			}
+		} else if left < triggerRelease {
+			if d.leftTriggerPressed {
+				d.leftTriggerPressed = false
+				d.TriggerKeyAssignment(0)
+			}
+			d.leftTriggerArmed = true
 		}
-	} else if left < triggerRelease {
-		if d.leftTriggerPressed {
-			d.leftTriggerPressed = false
-			d.TriggerKeyAssignment(0)
-		}
-		d.leftTriggerArmed = true
 	}
 
-	if right >= triggerMax {
-		if d.rightTriggerArmed {
-			d.rightTriggerArmed = false
-			d.rightTriggerPressed = true
-			d.TriggerKeyAssignment(4096)
+	if d.rightTriggerMode {
+		inputmanager.InputControlGamepadTriggers(
+			int32(left),
+			int32(right),
+			1,
+			d.DeviceProfile.AnalogData[3].DeadZoneMin,
+			d.DeviceProfile.AnalogData[3].DeadZoneMax,
+		)
+	} else {
+		if right >= triggerMax {
+			if d.rightTriggerArmed {
+				d.rightTriggerArmed = false
+				d.rightTriggerPressed = true
+				d.TriggerKeyAssignment(4096)
+			}
+		} else if right < triggerRelease {
+			if d.rightTriggerPressed {
+				d.rightTriggerPressed = false
+				d.TriggerKeyAssignment(0)
+			}
+			d.rightTriggerArmed = true
 		}
-	} else if right < triggerRelease {
-		if d.rightTriggerPressed {
-			d.rightTriggerPressed = false
-			d.TriggerKeyAssignment(0)
-		}
-		d.rightTriggerArmed = true
 	}
 }
 
@@ -2245,31 +2312,73 @@ func (d *Device) stickToMoveData(module uint8, xRaw, yRaw int16) (int32, int32) 
 	return dx, dy
 }
 
+func applyDeadzone(v int16, dz int16) int16 {
+	if v > -dz && v < dz {
+		return 0
+	}
+	return v
+}
+
 func (d *Device) handleAnalogData(module uint8, data []byte) {
 	xRaw, yRaw := d.decodeStick(data)
-	dx, dy := d.stickToMoveData(module, xRaw, yRaw)
 
-	if dx != 0 || dy != 0 {
-		switch module {
-		case 0:
-			switch d.DeviceProfile.LeftThumbStickMode {
-			case 1:
-				if d.DeviceProfile.LeftThumbStickInvertY {
-					dy = -dy
-				}
-				inputmanager.InputControlMove(dx, dy)
-				break
-			}
-			break
+	var st *StickState
+	if module == 0 {
+		st = &d.leftStick
+	} else {
+		st = &d.rightStick
+	}
+
+	if xRaw == st.lastX && yRaw == st.lastY {
+		return
+	}
+	st.lastX, st.lastY = xRaw, yRaw
+
+	const deadzone = 1
+	x := applyDeadzone(xRaw, deadzone)
+	y := applyDeadzone(yRaw, deadzone)
+
+	if x == st.lastOutX && y == st.lastOutY {
+		return
+	}
+	st.lastOutX, st.lastOutY = x, y
+
+	if x == 0 && y == 0 {
+		if st.centerSent {
+			return
+		}
+		st.centerSent = true
+	} else {
+		st.centerSent = false
+	}
+
+	switch module {
+	case 0:
+		switch d.DeviceProfile.LeftThumbStickMode {
 		case 1:
-			switch d.DeviceProfile.RightThumbStickMode {
-			case 1:
-				if d.DeviceProfile.RightThumbStickInvertY {
-					dy = -dy
-				}
-				inputmanager.InputControlMove(dx, dy)
-				break
-			}
+			inputmanager.InputControlMoveMouse(
+				data,
+				d.DeviceProfile.LeftThumbStickInvertY,
+				d.DeviceProfile.LeftThumbStickSensitivityX,
+				d.DeviceProfile.LeftThumbStickSensitivityY,
+			)
+			break
+		case 2:
+			inputmanager.InputControlGamepadThumbsticks(data, module, d.DeviceProfile.LeftThumbStickInvertY)
+			break
+		}
+	case 1:
+		switch d.DeviceProfile.RightThumbStickMode {
+		case 1:
+			inputmanager.InputControlMoveMouse(
+				data,
+				d.DeviceProfile.RightThumbStickInvertY,
+				d.DeviceProfile.RightThumbStickSensitivityX,
+				d.DeviceProfile.RightThumbStickSensitivityY,
+			)
+			break
+		case 2:
+			inputmanager.InputControlGamepadThumbsticks(data, module, d.DeviceProfile.RightThumbStickInvertY)
 			break
 		}
 	}
@@ -2296,16 +2405,8 @@ func (d *Device) analogDataListener() {
 				if len(data) == 0 || data == nil {
 					continue
 				}
-
-				// Left thumbstick
-				if data[1] > 0x00 || data[2] > 0x00 || data[3] > 0x00 || data[4] > 0x00 {
-					d.handleAnalogData(0, data[1:5])
-				}
-
-				// Right thumbstick
-				if data[5] > 0x00 || data[6] > 0x00 || data[7] > 0x00 || data[8] > 0x00 {
-					d.handleAnalogData(1, data[5:9])
-				}
+				d.handleAnalogData(0, data[1:5])
+				d.handleAnalogData(1, data[5:9])
 			}
 		}
 	}()
@@ -2389,6 +2490,9 @@ func (d *Device) TriggerKeyAssignment(value uint32) {
 			switch val.ActionType {
 			case 1, 3:
 				inputmanager.InputControlKeyboardHold(val.ActionCommand, false)
+			case 4:
+				inputmanager.InputControlGamepadHold(val.ActionCommand, false)
+				break
 			case 9:
 				inputmanager.InputControlMouseHold(val.ActionCommand, false)
 			}
@@ -2405,6 +2509,13 @@ func (d *Device) TriggerKeyAssignment(value uint32) {
 					inputmanager.InputControlKeyboardHold(val.ActionCommand, true)
 				} else {
 					inputmanager.InputControlKeyboard(val.ActionCommand, false)
+				}
+				break
+			case 4:
+				if val.ActionHold {
+					inputmanager.InputControlGamepadHold(val.ActionCommand, true)
+				} else {
+					inputmanager.InputControlGamepad(val.ActionCommand, false)
 				}
 				break
 			case 9:

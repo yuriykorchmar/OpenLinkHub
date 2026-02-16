@@ -544,6 +544,16 @@ func getInputKeys(w http.ResponseWriter, _ *http.Request) {
 	resp.Send(w)
 }
 
+// getControllerKeys will return a map of non-media keys
+func getControllerKeys(w http.ResponseWriter, _ *http.Request) {
+	resp := &Response{
+		Code:   http.StatusOK,
+		Status: 1,
+		Data:   inputmanager.GetControllerKeys(),
+	}
+	resp.Send(w)
+}
+
 // getMouseButtons will return a map of mouse buttons
 func getMouseButtons(w http.ResponseWriter, _ *http.Request) {
 	resp := &Response{
@@ -2314,6 +2324,7 @@ func setRoutes() http.Handler {
 	handleFunc(r, "/api/input/media", http.MethodGet, getMediaKeys)
 	handleFunc(r, "/api/input/keyboard", http.MethodGet, getInputKeys)
 	handleFunc(r, "/api/input/mouse", http.MethodGet, getMouseButtons)
+	handleFunc(r, "/api/input/controller", http.MethodGet, getControllerKeys)
 	handleFunc(r, "/api/led/", http.MethodGet, getDeviceLed)
 	handleFunc(r, "/api/macro/", http.MethodGet, getMacro)
 	handleFunc(r, "/api/macro/keyInfo/", http.MethodGet, getKeyName)

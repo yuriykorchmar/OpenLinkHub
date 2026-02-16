@@ -400,6 +400,42 @@
                                 <div class="card-body no-bottom-padding">
                                     <div class="settings-list">
                                         <canvas id="graph_{{ $key }}" style="width: 100%; height: 300px; display: block;"></canvas>
+                                        <div class="settings-row settings-row-30-50-20">
+                                            <span class="settings-label text-ellipsis">{{ $root.Lang "txtDeadZoneMin" }}</span>
+                                            <div class="system-slider no-padding-top">
+                                                <label for="brightnessSlider" class="full-width">
+                                                    <input type="range"
+                                                           id="deadZoneMinValue_{{ $key }}"
+                                                           name="leftThumbStickSensitivityValueX"
+                                                           class="system-slider-input-no-percent"
+                                                           min="2"
+                                                           max="15"
+                                                           value="{{ $leftTsSettings.DeadZoneMin }}"
+                                                           step="1"
+                                                           data-value-target="#deadZoneMin_{{ $key }}"
+                                                           style="--slider-progress: 0%;">
+                                                </label>
+                                            </div>
+                                            <div class="slider-value" id="deadZoneMin_{{ $key }}">{{ $leftTsSettings.DeadZoneMin }}</div>
+                                        </div>
+                                        <div class="settings-row settings-row-30-50-20">
+                                            <span class="settings-label text-ellipsis">{{ $root.Lang "txtDeadZoneMax" }}</span>
+                                            <div class="system-slider no-padding-top">
+                                                <label for="brightnessSlider" class="full-width">
+                                                    <input type="range"
+                                                           id="deadZoneMaxValue_{{ $key }}"
+                                                           name="leftThumbStickSensitivityValueX"
+                                                           class="system-slider-input-no-percent"
+                                                           min="2"
+                                                           max="15"
+                                                           value="{{ $leftTsSettings.DeadZoneMax }}"
+                                                           step="1"
+                                                           data-value-target="#deadZoneMax_{{ $key }}"
+                                                           style="--slider-progress: 0%;">
+                                                </label>
+                                            </div>
+                                            <div class="slider-value" id="deadZoneMax_{{ $key }}">{{ $leftTsSettings.DeadZoneMax }}</div>
+                                        </div>
                                     </div>
                                 </div>
 

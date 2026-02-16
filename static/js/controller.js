@@ -387,6 +387,20 @@ $(document).ready(function () {
             }
                 break;
 
+            case 4: { // Keyboard
+                $.ajax({
+                    url:'/api/input/controller',
+                    type:'get',
+                    success:function(result){
+                        $(keyAssignmentValue).empty();
+                        $.each(result.data, function( index, value ) {
+                            $(keyAssignmentValue).append($('<option>', { value: index, text: value.Name }));
+                        });
+                    }
+                });
+            }
+                break;
+
             case 8: { // Sniper
                 $(keyAssignmentValue).empty();
                 $(keyAssignmentValue).append($('<option>', { value: 0, text: "None" }));
@@ -690,6 +704,7 @@ $(document).ready(function () {
             pf["deadZoneMax"] = parseInt(deadZoneMax);
 
             const json = JSON.stringify(pf, null, 2);
+            console.log(json)
             $.ajax({
                 url: '/api/controller/setGraph',
                 type: 'POST',

@@ -148,6 +148,7 @@ var (
 	deviceKeepAlive         = 20000
 	transferTimeout         = 500
 	bufferSize              = 256
+	bufferListenerSize      = 64
 	bufferSizeWrite         = bufferSize + 1
 	headerSize              = 2
 	headerWriteSize         = 4
@@ -2929,7 +2930,7 @@ func (d *Device) writeKeyActuation(endpoint, data []byte) {
 // getListenerData will listen for keyboard events and return data on success or nil on failure.
 // ReadWithTimeout is mandatory due to the nature of listening for events
 func (d *Device) getListenerData() []byte {
-	data := make([]byte, bufferSize)
+	data := make([]byte, bufferListenerSize)
 	n, err := d.listener.ReadWithTimeout(data, 100*time.Millisecond)
 	if err != nil || n == 0 {
 		return nil

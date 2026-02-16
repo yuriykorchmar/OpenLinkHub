@@ -65,6 +65,7 @@ const (
 	UiSetEvbit          = 0x40045564
 	UiSetKeybit         = 0x40045565
 	UiSetRelbit         = 0x40045566
+	UiSetAbsbit         = 0x40045567
 	EvKey        uint16 = 1
 	EvSyn        uint16 = 0
 	EvRel        uint16 = 2
@@ -222,9 +223,20 @@ const (
 	KeyControllerDpadDown   uint16 = 142
 	KeyControllerDpadLeft   uint16 = 143
 	KeyControllerDpadRight  uint16 = 144
+	KeyControllerX          uint16 = 145
+	KeyControllerY          uint16 = 146
 )
 
 var (
+	synReport               uint16 = 0
+	AbsX                    uint16 = 0x00
+	AbsY                    uint16 = 0x01
+	AbsZ                    uint16 = 0x02 // often L2
+	AbsRx                   uint16 = 0x03
+	AbsRy                   uint16 = 0x04
+	AbsRz                   uint16 = 0x05 // often R2
+	AbsHat0X                uint16 = 0x10
+	AbsHat0Y                uint16 = 0x11
 	evKey                   uint16 = 0x01
 	evSyn                   uint16 = 0x00
 	evAbs                   uint16 = 0x03
@@ -375,11 +387,44 @@ var (
 	btnControllerDpadDown   uint16 = 0x221
 	btnControllerDpadLeft   uint16 = 0x222
 	btnControllerDpadRight  uint16 = 0x223
-	inputActions            map[uint16]InputAction
-	virtualKeyboardPointer  uintptr
-	virtualMousePointer     uintptr
-	virtualKeyboardFile     *os.File
-	virtualMouseFile        *os.File
+	btnControllerC          uint16 = 0x132 // BTN_C (306)
+	btnControllerZ          uint16 = 0x135 // BTN_Z (309)
+	btnController319        uint16 = 0x13F // code 319 (unknown name in your evtest output)
+	btnControllerTH1        uint16 = 0x2C0 // 704
+	btnControllerTH2        uint16 = 0x2C1 // 705
+	btnControllerTH3        uint16 = 0x2C2 // 706c
+	controllerButtons              = []uint16{
+		btnControllerSouth,
+		btnControllerEast,
+		btnControllerC,
+		btnControllerNorth,
+		btnControllerWest,
+		btnControllerZ,
+		btnControllerTL,
+		btnControllerTR,
+		btnControllerTL2,
+		btnControllerTR2,
+		btnControllerSelect,
+		btnControllerStart,
+		btnControllerMode,
+		btnControllerThumbL,
+		btnControllerThumbR,
+		btnController319,
+		btnControllerDpadUp,
+		btnControllerDpadDown,
+		btnControllerDpadLeft,
+		btnControllerDpadRight,
+		btnControllerTH1,
+		btnControllerTH2,
+		btnControllerTH3,
+	}
+	inputActions           map[uint16]InputAction
+	virtualKeyboardPointer uintptr
+	virtualMousePointer    uintptr
+	virtualGamepadPointer  uintptr
+	virtualKeyboardFile    *os.File
+	virtualMouseFile       *os.File
+	virtualGamepadFile     *os.File
 )
 
 type inputEvent struct {
@@ -538,6 +583,8 @@ func buildInputActions() {
 	inputActions[KeyControllerEast] = InputAction{Name: "(Controller) East (B)", CommandCode: btnControllerEast, Controller: true}
 	inputActions[KeyControllerNorth] = InputAction{Name: "(Controller) North (Y)", CommandCode: btnControllerNorth, Controller: true}
 	inputActions[KeyControllerWest] = InputAction{Name: "(Controller) West (X)", CommandCode: btnControllerWest, Controller: true}
+	inputActions[KeyControllerX] = InputAction{Name: "(Controller) X", CommandCode: btnControllerNorth, Controller: true} // 307
+	inputActions[KeyControllerY] = InputAction{Name: "(Controller) Y", CommandCode: btnControllerWest, Controller: true}  // 308
 	inputActions[KeyControllerTL] = InputAction{Name: "(Controller) L1", CommandCode: btnControllerTL, Controller: true}
 	inputActions[KeyControllerTR] = InputAction{Name: "(Controller) R1", CommandCode: btnControllerTR, Controller: true}
 	inputActions[KeyControllerTL2] = InputAction{Name: "(Controller) L2", CommandCode: btnControllerTL2, Controller: true}
@@ -613,6 +660,7 @@ func Init() {
 	buildInputActions()
 	CreateVirtualKeyboard(productId)
 	CreateVirtualMouse(productId)
+	CreateVirtualGamepad(productId)
 }
 
 // CreateVirtualKeyboard will create new keyboard based on given productId
@@ -639,11 +687,24 @@ func CreateVirtualMouse(productId uint16) {
 	}
 }
 
+// CreateVirtualGamepad will create new mouse based on given productId
+func CreateVirtualGamepad(productId uint16) {
+	if virtualGamepadFile == nil {
+		err := createVirtualGamepad(vendorId, productId)
+		if err != nil {
+			logger.Log(logger.Fields{"error": err}).Error("Failed to create virtual keyboard")
+			return
+		}
+		logger.Log(logger.Fields{}).Info("Virtual gamepad successfully created")
+	}
+}
+
 // Stop will stop input manager and destroy virtual inputs
 func Stop() {
 	logger.Log(logger.Fields{}).Info("Stopping virtual keyboard and mouse")
 	destroyVirtualKeyboard()
 	destroyVirtualMouse()
+	destroyVirtualGamepad()
 }
 
 // GetMediaKeys will return a map of InputAction for Media keys

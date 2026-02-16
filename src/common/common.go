@@ -485,6 +485,17 @@ func FClamp(value, min, max float64) float64 {
 	return value
 }
 
+// ClampInt32 clamps int32 values and return int32 value
+func ClampInt32(v, min, max int32) int32 {
+	if v < min {
+		return min
+	}
+	if v > max {
+		return max
+	}
+	return v
+}
+
 // ProcessMultiChunkPacket will process a byte array in chunks with a specified max size
 func ProcessMultiChunkPacket(data []byte, maxChunkSize int) [][]byte {
 	var result [][]byte
