@@ -276,9 +276,15 @@ func Init(_, slipstreamId, productId uint16, dev *hid.Device, endpoint byte, ser
 	d.saveDeviceProfile()  // Save profile
 	d.setAutoRefresh()     // Set auto device refresh
 	d.loadKeyAssignments() // Key Assignments
+	d.setGamepadSerial()   // Gamepad serial
 	logger.Log(logger.Fields{"serial": d.Serial, "product": d.Product}).Info("Device successfully initialized")
 
 	return d
+}
+
+// setGamepadSerial will set gamepad serial to inputmanager
+func (d *Device) setGamepadSerial() {
+	inputmanager.SetGamepadSerial(d.Serial)
 }
 
 // SetConnected will change connected status
@@ -964,23 +970,6 @@ func (d *Device) loadKeyAssignments() {
 		if err != nil {
 			logger.Log(logger.Fields{"location": keyAssignmentsFile, "serial": d.Serial}).Warn("Failed to close file handle")
 		}
-
-		for k, v := range d.KeyAssignment {
-			if k == 2048 {
-				if v.ActionCommand == 134 {
-					d.leftTriggerMode = true
-				} else {
-					d.leftTriggerMode = false
-				}
-			}
-			if k == 4096 {
-				if v.ActionCommand == 135 {
-					d.rightTriggerMode = true
-				} else {
-					d.rightTriggerMode = false
-				}
-			}
-		}
 	} else {
 		var keyAssignment = map[int]inputmanager.KeyAssignment{
 			2147483648: {
@@ -1105,114 +1094,114 @@ func (d *Device) loadKeyAssignments() {
 			},
 			16384: {
 				Name:          "RS (Press)",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 140,
+				ActionHold:    true,
 				ButtonIndex:   14,
 			},
 			8192: {
 				Name:          "LS (Press)",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 139,
+				ActionHold:    true,
 				ButtonIndex:   13,
 			},
 			4096: {
 				Name:          "RT",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 135,
 				ActionHold:    false,
 				ButtonIndex:   12,
 			},
 			2048: {
 				Name:          "LT",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 134,
 				ActionHold:    false,
 				ButtonIndex:   11,
 			},
 			1024: {
 				Name:          "RB",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 133,
+				ActionHold:    true,
 				ButtonIndex:   10,
 			},
 			512: {
 				Name:          "LB",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 132,
+				ActionHold:    true,
 				ButtonIndex:   9,
 			},
 			256: {
 				Name:          "B",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 129,
+				ActionHold:    true,
 				ButtonIndex:   8,
 			},
 			128: {
 				Name:          "Y",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 146,
+				ActionHold:    true,
 				ButtonIndex:   7,
 			},
 			64: {
 				Name:          "X",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 145,
+				ActionHold:    true,
 				ButtonIndex:   6,
 			},
 			32: {
 				Name:          "A",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 128,
+				ActionHold:    true,
 				ButtonIndex:   5,
 			},
 			16: {
 				Name:          "DPAD Right",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 144,
+				ActionHold:    true,
 				ButtonIndex:   4,
 			},
 			8: {
 				Name:          "DPAD Left",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 143,
+				ActionHold:    true,
 				ButtonIndex:   3,
 			},
 			4: {
 				Name:          "DPAD Down",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 142,
+				ActionHold:    true,
 				ButtonIndex:   2,
 			},
 			2: {
 				Name:          "DPAD Up",
-				Default:       true,
-				ActionType:    0,
-				ActionCommand: 0,
-				ActionHold:    false,
+				Default:       false,
+				ActionType:    4,
+				ActionCommand: 141,
+				ActionHold:    true,
 				ButtonIndex:   1,
 			},
 			1: {
@@ -1230,6 +1219,23 @@ func (d *Device) loadKeyAssignments() {
 			return
 		}
 		d.KeyAssignment = keyAssignment
+	}
+
+	for k, v := range d.KeyAssignment {
+		if k == 2048 {
+			if v.ActionCommand == 134 {
+				d.leftTriggerMode = true
+			} else {
+				d.leftTriggerMode = false
+			}
+		}
+		if k == 4096 {
+			if v.ActionCommand == 135 {
+				d.rightTriggerMode = true
+			} else {
+				d.rightTriggerMode = false
+			}
+		}
 	}
 }
 
@@ -1298,6 +1304,38 @@ func (d *Device) upgradeRgbProfile(path string, profiles []string) {
 			return
 		}
 	}
+}
+
+// TriggerHapticEngineExternal will trigger vibration motors from external source
+func (d *Device) TriggerHapticEngineExternal(left, right byte) {
+	if !d.Connected {
+		return
+	}
+
+	go func() {
+		buf := make([]byte, 13)
+		buf[0] = 0x09
+		buf[1] = 0x00
+		buf[2] = 0x6a
+		buf[3] = 0x09
+		buf[4] = 0x00
+		buf[5] = 0x03
+		buf[6] = 0x00
+		buf[7] = 0x00
+		buf[8] = left  // Left Haptic Engine On
+		buf[9] = right // Right Haptic Engine On
+		buf[10] = 0x10
+		buf[11] = 0x00
+		buf[12] = 0xeb
+
+		if d.analogListener != nil {
+			_, err := d.analogListener.Write(buf)
+			if err != nil {
+				logger.Log(logger.Fields{"error": err, "vendorId": d.VendorId}).Error("Unable to write to haptic device")
+				return
+			}
+		}
+	}()
 }
 
 // triggerHapticEngine will trigger vibration motors
@@ -1563,6 +1601,8 @@ func (d *Device) saveDeviceProfile() {
 		deviceProfile.LeftThumbStickSensitivityY = 5
 		deviceProfile.RightThumbStickSensitivityX = 5
 		deviceProfile.RightThumbStickSensitivityY = 5
+		deviceProfile.LeftThumbStickMode = 2
+		deviceProfile.RightThumbStickMode = 2
 		deviceProfile.AnalogData = map[int]AnalogData{
 			0: { // Left Thumbstick
 				DeadZoneMin: 5,

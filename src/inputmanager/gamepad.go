@@ -4,12 +4,52 @@ import (
 	"OpenLinkHub/src/common"
 	"OpenLinkHub/src/logger"
 	"encoding/binary"
+	"errors"
 	"math"
 	"os"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
 )
+
+type rumbleEffect struct {
+	Strong uint16
+	Weak   uint16
+	Length uint16
+}
+
+type uinputFFUpload struct {
+	RequestID uint32
+	Retval    int32
+	Effect    ffEffect
+	Old       ffEffect
+}
+
+type uinputFFErase struct {
+	RequestID uint32
+	Retval    int32
+	EffectID  uint32
+}
+
+type ffTrigger struct {
+	Button   uint16
+	Interval uint16
+}
+
+type ffReplay struct {
+	Length uint16
+	Delay  uint16
+}
+
+type ffEffect struct {
+	Type      uint16
+	ID        int16
+	Direction uint16
+	Trigger   ffTrigger
+	Replay    ffReplay
+	U         [8]uint32
+}
 
 // InputControlGamepad will emulate input events based on virtual gamepad
 func InputControlGamepad(controlType uint16, hold bool) {
@@ -192,7 +232,7 @@ func InputControlMoveMouse(data []byte, invertAxis bool, sensitivityX, sensitivi
 
 // createVirtualGamepad will create new virtual gamepad device
 func createVirtualGamepad(vendorId, productId uint16) error {
-	f, err := os.OpenFile("/dev/uinput", os.O_WRONLY, 0660)
+	f, err := os.OpenFile("/dev/uinput", os.O_RDWR|syscall.O_NONBLOCK, 0660)
 	if err != nil {
 		logger.Log(logger.Fields{"error": err}).Error("Failed to open /dev/uinput")
 		return err
@@ -212,7 +252,7 @@ func createVirtualGamepad(vendorId, productId uint16) error {
 			Product: productId,
 			Version: 1,
 		},
-		FFEffects: 0,
+		FFEffects: 16,
 	}
 	copy(u.Name[:], "OpenLinkHub Virtual Gamepad")
 
@@ -223,6 +263,12 @@ func createVirtualGamepad(vendorId, productId uint16) error {
 		return errno
 	}
 	if _, _, errno = syscall.Syscall(syscall.SYS_IOCTL, virtualGamepadPointer, UiSetEvbit, uintptr(evSyn)); errno != 0 {
+		return errno
+	}
+	if _, _, errno = syscall.Syscall(syscall.SYS_IOCTL, virtualGamepadPointer, UiSetEvbit, uintptr(evFf)); errno != 0 {
+		return errno
+	}
+	if _, _, errno = syscall.Syscall(syscall.SYS_IOCTL, virtualGamepadPointer, UiSetFfbit, uintptr(ffRumble)); errno != 0 {
 		return errno
 	}
 
@@ -260,8 +306,59 @@ func createVirtualGamepad(vendorId, productId uint16) error {
 		logger.Log(logger.Fields{"error": errno}).Error("Failed to create virtual gamepad")
 		return errno
 	}
+	running = true
+
+	uinputFFBridge(virtualGamepadFile, func(strong, weak uint16, lengthMs uint16, playing bool) {
+		var left, right byte
+		if playing {
+			left = magToByte(strong)
+			right = magToByte(weak)
+		} else {
+			left, right = 0, 0
+		}
+
+		if len(gamepadSerial) > 0 {
+			dispatch(gamepadSerial, "TriggerHapticEngineExternal", left, right)
+		}
+
+		rumbleMutex.Lock()
+		lastLeft = left
+		lastRight = right
+		rumbleGen++
+		currentGen := rumbleGen
+		rumbleMutex.Unlock()
+
+		// If game never sends 0,0 for L/R we need to reset haptics in order to prevent infinite vibration
+		if playing && (left != 0 || right != 0) {
+			d := time.Duration(lengthMs) * time.Millisecond
+			if lengthMs == 0 || lengthMs == 0xFFFF {
+				d = time.Duration(fallbackMs) * time.Millisecond
+			}
+			go func(expectedGen uint64, wait time.Duration) {
+				time.Sleep(wait)
+
+				rumbleMutex.Lock()
+				sc := (rumbleGen == expectedGen) && (lastLeft != 0 || lastRight != 0)
+				rumbleMutex.Unlock()
+
+				if sc && len(gamepadSerial) > 0 {
+					dispatch(gamepadSerial, "TriggerHapticEngineExternal", byte(0), byte(0))
+
+					rumbleMutex.Lock()
+					lastLeft, lastRight = 0, 0
+					rumbleGen++
+					rumbleMutex.Unlock()
+				}
+			}(currentGen, d)
+		}
+	})
 
 	return nil
+}
+
+// magToByte converts a 16-bit force-feedback magnitude (0..65535) to an 8-bit value (0..255).
+func magToByte(m uint16) byte {
+	return byte((uint32(m) * 255) / 65535)
 }
 
 // setAbsRange will set minimum and maximum ranges
@@ -275,6 +372,7 @@ func setAbsRange(u *uInputUserDev, abs int, min, max int32) {
 // destroyVirtualGamepad will destroy virtual gamepad and close uinput device
 func destroyVirtualGamepad() {
 	if virtualGamepadPointer != 0 {
+		running = false
 		if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, virtualGamepadPointer, UiDevDestroy, 0); errno != 0 {
 			logger.Log(logger.Fields{"error": errno}).Error("Failed to destroy virtual keyboard")
 		}
@@ -333,6 +431,7 @@ func applyCurve(v float64, gamma float64) float64 {
 	return sign * math.Pow(v, gamma)
 }
 
+// applyTriggerDeadzoneMinMax will apply inner (minPct) and outer (maxPct) dead zones
 func applyTriggerDeadzoneMinMax(v int32, minPct, maxPct int32) int32 {
 	v = common.ClampInt32(v, 0, 1023)
 	if minPct < 2 {
@@ -365,4 +464,118 @@ func applyTriggerDeadzoneMinMax(v int32, minPct, maxPct int32) int32 {
 	}
 	out := ((v - inMin) * 1023) / (inMax - inMin)
 	return common.ClampInt32(out, 0, 1023)
+}
+
+// rumbleMagnitudes is two u16 at start of union
+func (e *ffEffect) rumbleMagnitudes() (strong, weak uint16) {
+	u0 := e.U[0]
+	strong = uint16(u0 & 0xFFFF)
+	weak = uint16((u0 >> 16) & 0xFFFF)
+	return
+}
+
+// uinputFFBridge will open virtual gamepad device for reading
+func uinputFFBridge(uinput *os.File, onRumble func(uint16, uint16, uint16, bool)) {
+	fd := uinput.Fd()
+	var mu sync.Mutex
+	effects := map[int16]rumbleEffect{}
+
+	go func() {
+		for {
+			if !running {
+				return
+			}
+
+			var ev inputEvent
+			buf := (*(*[unsafe.Sizeof(ev)]byte)(unsafe.Pointer(&ev)))[:]
+
+			n, err := uinput.Read(buf)
+			if err != nil {
+				if errors.Is(err, syscall.EAGAIN) || errors.Is(err, syscall.EWOULDBLOCK) {
+					time.Sleep(2 * time.Millisecond)
+					continue
+				}
+				return
+			}
+			if n != int(unsafe.Sizeof(ev)) {
+				continue
+			}
+
+			switch ev.Type {
+			case EvUinput:
+				switch ev.Code {
+				case UiFfUpload:
+					var up uinputFFUpload
+					up.RequestID = uint32(ev.Value)
+
+					_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, uIBeginFFUpload, uintptr(unsafe.Pointer(&up)))
+					logger.Log(logger.Fields{"error": errno}).Error("gamepad uIBeginFFUpload failed")
+					if errno != 0 {
+						up.Retval = -int32(syscall.EINVAL)
+						_, _, errno2 := syscall.Syscall(syscall.SYS_IOCTL, fd, uIEndFFUpload, uintptr(unsafe.Pointer(&up)))
+						logger.Log(logger.Fields{"error": errno2}).Error("gamepad uIEndFFUpload failed")
+						continue
+					}
+					up.Effect.rumbleMagnitudes()
+					_, _, errno3 := syscall.Syscall(syscall.SYS_IOCTL, fd, uIEndFFUpload, uintptr(unsafe.Pointer(&up)))
+					logger.Log(logger.Fields{"error": errno3}).Error("gamepad uIEndFFUpload failed")
+
+					if up.Effect.Type == FfRumble {
+						strong, weak := up.Effect.rumbleMagnitudes()
+						length := up.Effect.Replay.Length
+						id := up.Effect.ID
+
+						mu.Lock()
+						effects[id] = rumbleEffect{Strong: strong, Weak: weak, Length: length}
+						mu.Unlock()
+
+						up.Retval = 0
+					} else {
+						up.Retval = -int32(syscall.EOPNOTSUPP)
+					}
+					_, _, _ = syscall.Syscall(syscall.SYS_IOCTL, fd, uIEndFFUpload, uintptr(unsafe.Pointer(&up)))
+
+				case UiFfErase:
+					var er uinputFFErase
+					er.RequestID = uint32(ev.Value)
+
+					_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, uIBeginFFErase, uintptr(unsafe.Pointer(&er)))
+					if errno != 0 {
+						er.Retval = -int32(syscall.EINVAL)
+						_, _, _ = syscall.Syscall(syscall.SYS_IOCTL, fd, uIEndFFErase, uintptr(unsafe.Pointer(&er)))
+						continue
+					}
+
+					mu.Lock()
+					delete(effects, int16(er.EffectID))
+					mu.Unlock()
+
+					er.Retval = 0
+					_, _, _ = syscall.Syscall(syscall.SYS_IOCTL, fd, uIEndFFErase, uintptr(unsafe.Pointer(&er)))
+				}
+			case EvFf:
+				id := int16(ev.Code)
+
+				mu.Lock()
+				eff, ok := effects[id]
+				mu.Unlock()
+
+				if ev.Value == 0 {
+					onRumble(0, 0, 0, false)
+					continue
+				}
+
+				if !ok {
+					onRumble(0, 0, 0, false)
+					continue
+				}
+
+				if eff.Strong == 0 && eff.Weak == 0 {
+					onRumble(0, 0, 0, false)
+					continue
+				}
+				onRumble(eff.Strong, eff.Weak, eff.Length, true)
+			}
+		}
+	}()
 }

@@ -5,11 +5,13 @@ package inputmanager
 // License: GPL-3.0 or later
 
 import (
+	"OpenLinkHub/src/dispatcher"
 	"OpenLinkHub/src/logger"
 	"errors"
 	"os"
 	"slices"
 	"sort"
+	"sync"
 	"syscall"
 	"unsafe"
 )
@@ -66,13 +68,30 @@ const (
 	UiSetKeybit         = 0x40045565
 	UiSetRelbit         = 0x40045566
 	UiSetAbsbit         = 0x40045567
+	UiSetFfbit          = 0x4004556B
+	UiIOCType           = uintptr('U')
+	UiFfUpload   uint16 = 1
+	UiFfErase    uint16 = 2
 	EvKey        uint16 = 1
 	EvSyn        uint16 = 0
 	EvRel        uint16 = 2
+	EvFf         uint16 = 0x15
+	EvUinput     uint16 = 0x0101
+	FfRumble     uint16 = 0x50
 	RelX                = 0x00
 	RelY                = 0x01
 	RelWheel            = 0x08
 	RelHWheel           = 0x06
+	iocNrBits           = 8
+	iocTypeBits         = 8
+	iocSizeBBits        = 14
+	iocNrShift          = 0
+	iocTypeShift        = iocNrShift + iocNrBits
+	iocSizeShift        = iocTypeShift + iocTypeBits
+	iocDirShift         = iocSizeShift + iocSizeBBits
+	iocWrite            = 1
+	iocRead             = 2
+	fallbackMs          = 1500
 )
 
 const (
@@ -228,6 +247,10 @@ const (
 )
 
 var (
+	uIBeginFFUpload                = iowr(UiIOCType, 200, unsafe.Sizeof(uinputFFUpload{}))
+	uIEndFFUpload                  = iow(UiIOCType, 201, unsafe.Sizeof(uinputFFUpload{}))
+	uIBeginFFErase                 = iowr(UiIOCType, 202, unsafe.Sizeof(uinputFFErase{}))
+	uIEndFFErase                   = iow(UiIOCType, 203, unsafe.Sizeof(uinputFFErase{}))
 	synReport               uint16 = 0
 	AbsX                    uint16 = 0x00
 	AbsY                    uint16 = 0x01
@@ -240,6 +263,8 @@ var (
 	evKey                   uint16 = 0x01
 	evSyn                   uint16 = 0x00
 	evAbs                   uint16 = 0x03
+	evFf                    uint16 = 0x15 // EV_FF
+	ffRumble                uint16 = 0x50 // FF_RUMBLE
 	keyVolumeUp             uint16 = 0x73
 	keyVolumeDown           uint16 = 0x72
 	keyVolumeMute           uint16 = 0x71
@@ -425,6 +450,13 @@ var (
 	virtualKeyboardFile    *os.File
 	virtualMouseFile       *os.File
 	virtualGamepadFile     *os.File
+	dispatch               dispatcher.DeviceDispatcher
+	running                bool
+	gamepadSerial          string
+	lastLeft               byte
+	lastRight              byte
+	rumbleMutex            sync.Mutex
+	rumbleGen              uint64
 )
 
 type inputEvent struct {
@@ -786,6 +818,16 @@ func FindKeyAssignment(keyAssignment map[int]KeyAssignment, input uint32, offset
 	return 0
 }
 
+// SetDispatcher will set device dispatcher
+func SetDispatcher(ds dispatcher.DeviceDispatcher) {
+	dispatch = ds
+}
+
+// SetGamepadSerial will set active gamepad serial
+func SetGamepadSerial(serial string) {
+	gamepadSerial = serial
+}
+
 // getInputAction will return InputAction based on actionType
 func getInputAction(actionType uint16) *InputAction {
 	if action, ok := inputActions[actionType]; ok {
@@ -870,3 +912,9 @@ func writeVirtualEvent(f *os.File, event *inputEvent) error {
 	}
 	return nil
 }
+
+func ioc(dir, typ, nr, size uintptr) uintptr {
+	return (dir << iocDirShift) | (typ << iocTypeShift) | (nr << iocNrShift) | (size << iocSizeShift)
+}
+func iow(typ, nr, size uintptr) uintptr  { return ioc(iocWrite, typ, nr, size) }
+func iowr(typ, nr, size uintptr) uintptr { return ioc(iocRead|iocWrite, typ, nr, size) }
