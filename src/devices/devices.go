@@ -43,6 +43,7 @@ import (
 	"OpenLinkHub/src/devices/k65plusWdongle"
 	"OpenLinkHub/src/devices/k65pm"
 	"OpenLinkHub/src/devices/k65rgb"
+	"OpenLinkHub/src/devices/k65rgbRF"
 	"OpenLinkHub/src/devices/k65rm"
 	"OpenLinkHub/src/devices/k68rgb"
 	"OpenLinkHub/src/devices/k70core"
@@ -714,6 +715,7 @@ var deviceRegisterMap = map[uint16]Product{
 	6997:  {1, 0, "K70 RGB MK2", k70mk2.Init, nil},                         // K70 RGB MK2
 	7019:  {1, 0, "K70 RGB MK2", k70mk2.Init, nil},                         // K70 RGB MK2
 	6935:  {1, 0, "K65 RGB", k65rgb.Init, nil},                             // K65 RGB
+	6969:  {1, 0, "K65 RGB RAPIDFIRE", k65rgbRF.Init, nil},                 // K65 RGB RAPIDFIRE
 	6984:  {1, 0, "STRAFE RGB MK2", strafergbmk2.Init, nil},                // STRAFE RGB MK2
 	11024: {1, 0, "K65 PLUS WIRELESS", k65plusWU.Init, nil},                // K65 PLUS WIRELESS USB
 	11025: {1, 0, "K65 PLUS WIRELESS", k65plusWU.Init, nil},                // K65 PLUS WIRELESS USB
