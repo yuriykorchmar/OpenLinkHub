@@ -108,6 +108,7 @@ import (
 	"OpenLinkHub/src/devices/voidV2dongle"
 	"OpenLinkHub/src/devices/xc7"
 	"OpenLinkHub/src/dispatcher"
+	"OpenLinkHub/src/inputmanager"
 	"OpenLinkHub/src/logger"
 	"OpenLinkHub/src/metrics"
 	"OpenLinkHub/src/openrgb"
@@ -629,6 +630,8 @@ func Init() {
 		openrgb.Init()
 		openrgb.SendToOpenRGB()
 	}
+
+	inputmanager.SetDispatcher(Dispatch)
 }
 
 // deviceRegisterMap hold map of supported devices and their initialization call
@@ -710,7 +713,7 @@ var deviceRegisterMap = map[uint16]Product{
 	6985:  {1, 0, "K70 RGB MK2", k70mk2.Init, nil},                         // K70 RGB MK2
 	6997:  {1, 0, "K70 RGB MK2", k70mk2.Init, nil},                         // K70 RGB MK2
 	7019:  {1, 0, "K70 RGB MK2", k70mk2.Init, nil},                         // K70 RGB MK2
-	6935:  {1, 0, "K65 RGB", k65rgb.Init, nil},                             // K70 RGB MK2
+	6935:  {1, 0, "K65 RGB", k65rgb.Init, nil},                             // K65 RGB
 	6984:  {1, 0, "STRAFE RGB MK2", strafergbmk2.Init, nil},                // STRAFE RGB MK2
 	11024: {1, 0, "K65 PLUS WIRELESS", k65plusWU.Init, nil},                // K65 PLUS WIRELESS USB
 	11025: {1, 0, "K65 PLUS WIRELESS", k65plusWU.Init, nil},                // K65 PLUS WIRELESS USB
