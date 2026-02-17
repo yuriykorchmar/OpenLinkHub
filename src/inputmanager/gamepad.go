@@ -509,7 +509,6 @@ func uinputFFBridge(uinput *os.File, onRumble func(uint16, uint16, uint16, bool)
 					up.RequestID = uint32(ev.Value)
 
 					_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, uIBeginFFUpload, uintptr(unsafe.Pointer(&up)))
-					logger.Log(logger.Fields{"error": errno}).Error("gamepad uIBeginFFUpload failed")
 					if errno != 0 {
 						up.Retval = -int32(syscall.EINVAL)
 						_, _, errno2 := syscall.Syscall(syscall.SYS_IOCTL, fd, uIEndFFUpload, uintptr(unsafe.Pointer(&up)))
@@ -518,7 +517,9 @@ func uinputFFBridge(uinput *os.File, onRumble func(uint16, uint16, uint16, bool)
 					}
 					up.Effect.rumbleMagnitudes()
 					_, _, errno3 := syscall.Syscall(syscall.SYS_IOCTL, fd, uIEndFFUpload, uintptr(unsafe.Pointer(&up)))
-					logger.Log(logger.Fields{"error": errno3}).Error("gamepad uIEndFFUpload failed")
+					if errno3 != 0 {
+						logger.Log(logger.Fields{"error": errno3}).Error("gamepad uIEndFFUpload failed")
+					}
 
 					if up.Effect.Type == FfRumble {
 						strong, weak := up.Effect.rumbleMagnitudes()
