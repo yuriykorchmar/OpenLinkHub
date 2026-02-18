@@ -61,6 +61,10 @@ This will give you output like this (your `device.name` will be different due to
 ```
 device.name = "alsa_card.usb-Scuf_Gaming_SCUF_Envision_Pro_Wireless_USB_Receiver_V2_1c629ed800020217-00"
 ```
+For V1 dongle use following
+```bash
+pactl list sinks | sed -n '/SCUF PC Controller/,/Properties:/p' | grep 'device.name'
+```
 
 ### Setup Wire Plumber
 ```bash
