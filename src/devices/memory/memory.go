@@ -521,11 +521,6 @@ func (d *Device) getDevices() int {
 	}
 
 	for i := 0; i < maximumRegisters; i++ {
-		if config.GetConfig().DecodeMemorySku {
-			logger.Log(logger.Fields{"address": colorAddresses[i]}).Error("decodeMemorySku is not supported anymore")
-			continue
-		}
-
 		if d.Debug {
 			logger.Log(logger.Fields{"address": colorAddresses[i]}).Info("Probing address")
 		}
@@ -541,13 +536,8 @@ func (d *Device) getDevices() int {
 				logger.Log(logger.Fields{"register": colorAddresses[i]}).Info("No such register found. Skipping...")
 				continue
 			} else {
-				if config.GetConfig().DecodeMemorySku {
-					logger.Log(logger.Fields{"register": colorAddresses[i]}).Warn("You can not use decodeMemorySku with Light Enhancement Kit in configuration")
-					continue
-				} else {
-					logger.Log(logger.Fields{"register": colorAddresses[i]}).Info("Found Light Enhancement Kit in configuration")
-					d.setEnhancementKit(colorAddresses[i])
-				}
+				logger.Log(logger.Fields{"register": colorAddresses[i]}).Info("Found Light Enhancement Kit in configuration")
+				d.setEnhancementKit(colorAddresses[i])
 			}
 		}
 

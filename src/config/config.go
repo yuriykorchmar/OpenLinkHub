@@ -25,7 +25,6 @@ type Configuration struct {
 	MemorySmBus               string   `json:"memorySmBus"`
 	MemoryType                int      `json:"memoryType"`
 	Exclude                   []uint16 `json:"exclude"`
-	DecodeMemorySku           bool     `json:"decodeMemorySku"`
 	MemorySku                 string   `json:"memorySku"`
 	ConfigPath                string   `json:",omitempty"`
 	ResumeDelay               int      `json:"resumeDelay"`
@@ -49,7 +48,6 @@ var (
 	location      = ""
 	configuration Configuration
 	upgrade       = map[string]any{
-		"decodeMemorySku":           false,
 		"memorySku":                 "",
 		"resumeDelay":               15000,
 		"logLevel":                  "info",
@@ -141,7 +139,6 @@ func upgradeFile(cfg string) {
 			MemorySmBus:               "i2c-0",
 			MemoryType:                5,
 			Exclude:                   make([]uint16, 0),
-			DecodeMemorySku:           false,
 			MemorySku:                 "",
 			ResumeDelay:               15000,
 			LogLevel:                  "info",
