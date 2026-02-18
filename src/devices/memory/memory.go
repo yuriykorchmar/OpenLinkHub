@@ -141,11 +141,9 @@ var crcTable = [256]uint8{
 var (
 	pwd                   = ""
 	deviceRefreshInterval = 1000
-	cmdActivations        = []byte{0x36, 0x37} // SPA0 and SPA1
 	maximumRegisters      = 8
 	colorAddresses        = []byte{0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f} // DDR4
 	temperatureAddresses  = []string{"0018", "0019", "001a", "001b", "001c", "001d", "001e", "001f"}
-	dimmInfoAddresses     = []byte{0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57} // DDR4, DDR5
 	basePath              = "/sys/bus/i2c/drivers"
 	rgbProfileUpgrade     = []string{"led", "nebula", "marquee", "spiralrainbow", "gradient", "pastelrainbow", "pastelspiralrainbow"}
 	rgbModes              = []string{
@@ -178,10 +176,6 @@ var (
 func Init(_, _ uint16, _, path string) *common.Device {
 	if config.GetConfig().MemoryType == 5 {
 		colorAddresses = []byte{0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f} // DDR5
-	}
-
-	if config.GetConfig().RamTempViaHwmon {
-		dimmInfoAddresses = colorAddresses
 	}
 
 	// Set global working directory
@@ -519,56 +513,40 @@ func (d *Device) getTemperature(filePath string) (float32, error) {
 func (d *Device) getDevices() int {
 	var devices = make(map[int]*Devices)
 	var modules []RAMModule
-	activated := 0
 	baseDevice := 51
 
-	// DDR4
-	skuRangeLow := byte(0x49)
-	skuRangeHigh := byte(0x5b)
+	// DDR5
 	if config.GetConfig().MemoryType == 5 {
-		// DDR5
-		skuRangeLow = byte(0x89)
-		skuRangeHigh = byte(0x9b)
 		modules = NewMemoryModules()
-		/*
-			This will fail on older kernels and return 0 devices, without ever reading user defined SKU
-			if modules == nil {
-				return 0
-			}
-			if len(modules) == 0 {
-				logger.Log(logger.Fields{}).Warn("No memory modules found")
-				return 0
-			} else {
-				logger.Log(logger.Fields{"count": len(modules)}).Info("Found memory modules")
-			}
-		*/
 	}
 
-	if d.Debug {
-		logger.Log(logger.Fields{"skuRangeLow": skuRangeLow, "skuRangeHigh": skuRangeHigh}).Info("DEBUG skuRange")
-	}
 	for i := 0; i < maximumRegisters; i++ {
-		if d.Debug {
-			logger.Log(logger.Fields{"address": dimmInfoAddresses[i]}).Info("Probing address")
+		if config.GetConfig().DecodeMemorySku {
+			logger.Log(logger.Fields{"address": colorAddresses[i]}).Error("decodeMemorySku is not supported anymore")
+			continue
 		}
 
-		if slices.Contains(config.GetConfig().EnhancementKits, dimmInfoAddresses[i]) {
-			d.setEnhancementKit(dimmInfoAddresses[i])
+		if d.Debug {
+			logger.Log(logger.Fields{"address": colorAddresses[i]}).Info("Probing address")
+		}
+
+		if slices.Contains(config.GetConfig().EnhancementKits, colorAddresses[i]) {
+			d.setEnhancementKit(colorAddresses[i])
 		}
 
 		// Probe for register
-		_, err := smbus.ReadRegister(d.dev.File, dimmInfoAddresses[i], 0x00)
+		_, err := smbus.ReadRegister(d.dev.File, colorAddresses[i], 0x00)
 		if err != nil {
-			if !slices.Contains(config.GetConfig().EnhancementKits, dimmInfoAddresses[i]) {
-				logger.Log(logger.Fields{"register": dimmInfoAddresses[i]}).Info("No such register found. Skipping...")
+			if !slices.Contains(config.GetConfig().EnhancementKits, colorAddresses[i]) {
+				logger.Log(logger.Fields{"register": colorAddresses[i]}).Info("No such register found. Skipping...")
 				continue
 			} else {
 				if config.GetConfig().DecodeMemorySku {
-					logger.Log(logger.Fields{"register": dimmInfoAddresses[i]}).Warn("You can not use decodeMemorySku with Light Enhancement Kit in configuration")
+					logger.Log(logger.Fields{"register": colorAddresses[i]}).Warn("You can not use decodeMemorySku with Light Enhancement Kit in configuration")
 					continue
 				} else {
-					logger.Log(logger.Fields{"register": dimmInfoAddresses[i]}).Info("Found Light Enhancement Kit in configuration")
-					d.setEnhancementKit(dimmInfoAddresses[i])
+					logger.Log(logger.Fields{"register": colorAddresses[i]}).Info("Found Light Enhancement Kit in configuration")
+					d.setEnhancementKit(colorAddresses[i])
 				}
 			}
 		}
@@ -577,75 +555,7 @@ func (d *Device) getDevices() int {
 			logger.Log(logger.Fields{"memoryType": config.GetConfig().MemoryType}).Info("Probing address")
 		}
 
-		if config.GetConfig().MemoryType == 5 {
-			if config.GetConfig().DecodeMemorySku {
-				if d.getEnhancementKit(dimmInfoAddresses[i]) {
-					logger.Log(logger.Fields{"register": dimmInfoAddresses[i]}).Warn("You can not use decodeMemorySku with Light Enhancement Kit in configuration")
-					continue
-				}
-				// DDR5 has no SPA0 and SPA1, it uses actual DIMM info addresses for different info
-				// I2C Legacy Mode Device Configuration
-				err = smbus.WriteRegister(d.dev.File, dimmInfoAddresses[i], 0x0b, 0x04)
-				if err != nil {
-					logger.Log(logger.Fields{"error": err, "address": dimmInfoAddresses[i]}).Error("Failed to activate DIMM info")
-					continue
-				}
-			}
-		} else {
-			if config.GetConfig().DecodeMemorySku {
-				if d.getEnhancementKit(dimmInfoAddresses[i]) {
-					logger.Log(logger.Fields{"register": dimmInfoAddresses[i]}).Warn("You can not use decodeMemorySku with Light Enhancement Kit in configuration")
-					continue
-				}
-				// We send 0x00 to 0x00 to SPA addresses
-				for _, cmdActivation := range cmdActivations {
-					err = smbus.WriteRegister(d.dev.File, cmdActivation, 0x00, 0x00)
-					if err != nil {
-						logger.Log(logger.Fields{"error": err}).Error("Failed to activate DIMM info")
-						continue
-					}
-					activated++
-				}
-				if activated == 0 {
-					continue
-				}
-			}
-		}
 		var buf []byte
-
-		if config.GetConfig().DecodeMemorySku {
-			time.Sleep(1 * time.Millisecond)
-			// Check SKU 1st letter, must match to C = Corsair
-			check, err := smbus.ReadRegister(d.dev.File, dimmInfoAddresses[i], skuRangeLow)
-			if err != nil {
-				logger.Log(logger.Fields{"error": err, "register": skuRangeLow}).Error("Failed to get first letter of SKU")
-				continue
-			}
-			if string(check) != "C" {
-				logger.Log(logger.Fields{"error": err, "register": skuRangeLow, "letter": string(check)}).Warn("First SKU letter does not match to letter C")
-				continue
-			}
-
-			if d.Debug {
-				logger.Log(logger.Fields{"skuLetter": string(check)}).Info("Memory SKU - First letter")
-			}
-
-			// Get SKU
-			for addr := skuRangeLow; addr <= skuRangeHigh; addr++ {
-				reg, err := smbus.ReadRegister(d.dev.File, dimmInfoAddresses[i], addr)
-				if err != nil {
-					break
-				}
-				if reg == 32 || reg == 0 {
-					continue
-				}
-				buf = append(buf, reg)
-			}
-
-			if d.Debug {
-				logger.Log(logger.Fields{"sku": buf, "skuString": string(buf), "skuLen": len(buf)}).Info("Memory SKU")
-			}
-		}
 
 		if modules != nil && len(modules) > 0 {
 			// If modules are available, we can fetch memory SKU from them
@@ -790,7 +700,7 @@ func (d *Device) getDevices() int {
 					if len(d.SkuLine) < 1 {
 						d.SkuLine = skuLine
 					}
-					if d.getEnhancementKit(dimmInfoAddresses[i]) {
+					if d.getEnhancementKit(colorAddresses[i]) {
 						device.Size = 0
 						device.Latency = 0
 						device.Speed = 0
@@ -800,7 +710,7 @@ func (d *Device) getDevices() int {
 					}
 
 					if config.GetConfig().RamTempViaHwmon {
-						if !d.getEnhancementKit(dimmInfoAddresses[i]) {
+						if !d.getEnhancementKit(colorAddresses[i]) {
 							if config.GetConfig().MemoryType == 5 {
 								hwmonTemperatureFile := d.getHwMonTemperatureFile(baseDevice, "spd5118")
 								if len(hwmonTemperatureFile) > 0 {
