@@ -42,11 +42,11 @@ $ sudo amixer -c 5 cset numid=8 32,32 && sudo alsactl store
 
 ### If you do not wish to use ID, you can use `hw:` flag. - Cable
 ```bash
-$ amixer -D hw:V2 cset numid=8 32,32 && sudo alsactl store
+$ sudo amixer -D hw:V2 cset numid=8 32,32 && sudo alsactl store
 ```
 ### If you do not wish to use ID, you can use `hw:` flag. - Wireless Dongle
 ```bash
-$ amixer -D hw:USB cset numid=8 32,32 && sudo alsactl store
+$ sudo amixer -D hw:USB cset numid=8 32,32 && sudo alsactl store
 ```
 This will give you proper audio output power. 
 
