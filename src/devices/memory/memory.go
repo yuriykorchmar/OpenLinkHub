@@ -17,7 +17,6 @@ import (
 	"OpenLinkHub/src/temperatures"
 	"encoding/json"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -138,10 +137,6 @@ var crcTable = [256]uint8{
 	0xAE, 0xA9, 0xA0, 0xA7, 0xB2, 0xB5, 0xBC, 0xBB, 0x96, 0x91, 0x98, 0x9F, 0x8A, 0x8D, 0x84, 0x83,
 	0xDE, 0xD9, 0xD0, 0xD7, 0xC2, 0xC5, 0xCC, 0xCB, 0xE6, 0xE1, 0xE8, 0xEF, 0xFA, 0xFD, 0xF4, 0xF3,
 }
-
-const (
-	transferTypeColor = 0
-)
 
 var (
 	pwd                   = ""
@@ -2123,30 +2118,6 @@ func (d *Device) SaveUserProfile(profileName string) uint8 {
 	return 0
 }
 
-// calculateTemperature will calculate temperature to readable value
-func (d *Device) calculateTemperature(temp uint16) float64 {
-	temperature := 0.0
-	if config.GetConfig().MemoryType == 4 {
-		// DDR4
-		res := ((temp & 0xff) << 8) | (temp >> 8)
-		res = res & 0x1fff
-		if res > 0x0fff {
-			res -= 0x2000
-		}
-		scale, bits := 0.25, 10.0
-		multiplier := res >> (12 - int(bits))
-		temperature = scale * float64(multiplier)
-	} else {
-		// DDR5 SPD5118 standard
-		res := (temp >> 8) | temp
-		shift := 21
-		val := (int32(res>>2) << shift) >> shift
-		val = val * 256
-		temperature = math.Round((float64(val)/1000)*100) / 100
-	}
-	return temperature
-}
-
 // setTemperatures will fetch temperature values
 func (d *Device) setTemperatures() {
 	d.CpuTemp = temperatures.GetCpuTemperature()
@@ -2193,46 +2164,6 @@ func (d *Device) setAutoRefresh() {
 			}
 		}
 	}()
-}
-
-func readJC42Temp(bus int, addr string) (int, error) {
-	basePath := fmt.Sprintf(
-		"/sys/bus/i2c/drivers/jc42/%d-%s/hwmon",
-		bus,
-		addr,
-	)
-
-	entries, err := os.ReadDir(basePath)
-	if err != nil {
-		return 0, fmt.Errorf("reading hwmon dir: %w", err)
-	}
-
-	var hwmonDir string
-	for _, e := range entries {
-		if e.IsDir() && strings.HasPrefix(e.Name(), "hwmon") {
-			hwmonDir = e.Name()
-			break
-		}
-	}
-
-	if hwmonDir == "" {
-		return 0, fmt.Errorf("no hwmon directory found in %s", basePath)
-	}
-
-	tempPath := filepath.Join(basePath, hwmonDir, "temp1_input")
-	data, err := os.ReadFile(tempPath)
-	if err != nil {
-		return 0, fmt.Errorf("reading temp1_input: %w", err)
-	}
-
-	// sysfs files usually end with newline
-	valueStr := strings.TrimSpace(string(data))
-	tempMilliC, err := strconv.Atoi(valueStr)
-	if err != nil {
-		return 0, fmt.Errorf("parsing temperature: %w", err)
-	}
-
-	return tempMilliC, nil
 }
 
 // calculateChecksum will calculate CRC checksum

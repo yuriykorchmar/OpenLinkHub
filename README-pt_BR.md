@@ -14,6 +14,7 @@ Gerencie iluminação RGB, velocidades de ventiladores, métricas do sistema, be
 - Perfis de ventiladores personalizados, sensores de temperatura e editor RGB
 - Se precisar de menu na bandeja do sistema - https://github.com/jurkovic-nikola/openlinkhub-tray
 - [Lista de dispositivos suportados](docs/supported-devices.md)
+- [SCUF Controller Audio Config](docs/scuf-controller.md)
 
 ![Interface Web](https://github.com/jurkovic-nikola/OpenLinkHub/blob/main/static/img/ui.png?raw=true)
 
