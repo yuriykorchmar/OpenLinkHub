@@ -124,8 +124,8 @@ func Get() *Device {
 // AddDeviceController will add a new Cluster Controller
 func (d *Device) AddDeviceController(controller *common.ClusterController) {
 	d.mutex.Lock()
-	defer d.mutex.Unlock()
 	d.Controllers = append(d.Controllers, controller)
+	d.mutex.Unlock()
 
 	if len(d.Controllers) == 1 {
 		d.setDeviceColor()
