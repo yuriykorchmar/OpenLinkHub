@@ -788,6 +788,17 @@ func (d *Device) saveDeviceProfile() {
 				},
 				Name: "Microphone",
 			},
+			2: { // Indicator LED
+				ColorIndex: []int{1, 4, 7},
+				Color: &rgb.Color{
+					Red:        0,
+					Green:      255,
+					Blue:       255,
+					Brightness: 1,
+					Hex:        fmt.Sprintf("#%02x%02x%02x", 0, 255, 255),
+				},
+				Name: "Indicator LED",
+			},
 		}
 		deviceProfile.SleepMode = 15
 		deviceProfile.MuteIndicator = 0
