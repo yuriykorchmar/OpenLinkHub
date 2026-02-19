@@ -767,6 +767,7 @@ var deviceRegisterMap = map[uint16]Product{
 	2696:  {3, 0, "HS80 RGB USB", hs80rgb.Init, nil},                       // HS80 RGB USB Gaming Headset
 	2665:  {3, 0, "HS80 RGB WIRELESS", hs80rgbWU.Init, nil},                // HS80 RGB WIRELESS Gaming Headset
 	7132:  {1, 0, "SLIPSTREAM WIRELESS", nil, slipstream.Init},             // SLIPSTREAM WIRELESS USB Receiver
+	7039:  {1, 0, "SLIPSTREAM WIRELESS", nil, slipstream.Init},             // CORSAIR DARK CORE RGB PRO SE Gaming Dongle
 	7078:  {1, 0, "SLIPSTREAM WIRELESS", nil, slipstream.Init},             // SLIPSTREAM WIRELESS USB Receiver
 	11008: {1, 0, "SLIPSTREAM WIRELESS", nil, slipstream.Init},             // SLIPSTREAM WIRELESS USB Receiver
 	7041:  {1, 0, "DARK CORE RGB PRO Gaming Dongle", nil, slipstream.Init}, // DARK CORE RGB PRO Gaming Dongle
