@@ -129,6 +129,7 @@ type Device struct {
 	MaxDPI                int
 	ZoneAmount            int
 	DPIAmount             int
+	checkOnlineMu         sync.Mutex
 }
 
 var (
@@ -347,12 +348,25 @@ func (d *Device) SetConnected(value bool) {
 
 // checkDeviceOnline will check if device is online
 func (d *Device) checkDeviceOnline() bool {
-	_, err := d.transfer(cmdHeartbeat, nil)
-	if err != nil {
-		logger.Log(logger.Fields{"error": err, "serial": d.Serial}).Warn("Device is offline")
-		return false
+	d.checkOnlineMu.Lock()
+	defer d.checkOnlineMu.Unlock()
+
+	for i := 0; i < 10; i++ {
+		_, err := d.transfer(cmdHeartbeat, nil)
+		if err == nil {
+			return true
+		}
+
+		logger.Log(logger.Fields{
+			"error":  err,
+			"serial": d.Serial,
+		}).Warn("Device is offline")
+
+		if i < 9 {
+			time.Sleep(1 * time.Second)
+		}
 	}
-	return true
+	return false
 }
 
 // Connect will connect to a device
@@ -567,6 +581,10 @@ func (d *Device) saveRgbProfile() {
 
 // UpdateAngleSnapping will update angle snapping mode
 func (d *Device) UpdateAngleSnapping(angleSnappingMode int) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -583,6 +601,10 @@ func (d *Device) UpdateAngleSnapping(angleSnappingMode int) uint8 {
 
 // UpdateButtonOptimization will update button response optimization mode
 func (d *Device) UpdateButtonOptimization(buttonOptimizationMode int) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -741,6 +763,10 @@ func (d *Device) UpdateRgbProfileData(profileName string, profile rgb.Profile) u
 	d.rgbMutex.Lock()
 	defer d.rgbMutex.Unlock()
 
+	if !d.Connected {
+		return 0
+	}
+
 	if d.GetRgbProfile(profileName) == nil {
 		logger.Log(logger.Fields{"serial": d.Serial, "profile": profile}).Warn("Non-existing RGB profile")
 		return 0
@@ -848,6 +874,9 @@ func (d *Device) setupOpenRGBController() {
 
 // ProcessSetOpenRgbIntegration will update OpenRGB integration status
 func (d *Device) ProcessSetOpenRgbIntegration(enabled bool) uint8 {
+	if !d.Connected {
+		return 0
+	}
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -868,6 +897,9 @@ func (d *Device) ProcessSetOpenRgbIntegration(enabled bool) uint8 {
 
 // ProcessSetRgbCluster will update OpenRGB integration status
 func (d *Device) ProcessSetRgbCluster(enabled bool) uint8 {
+	if !d.Connected {
+		return 0
+	}
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -996,6 +1028,10 @@ func (d *Device) SaveUserProfile(profileName string) uint8 {
 
 // SaveMouseDPI will save mouse DPI
 func (d *Device) SaveMouseDPI(stages map[int]uint16) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	i := 0
 	if d.DeviceProfile == nil {
 		return 0
@@ -1033,6 +1069,10 @@ func (d *Device) SaveMouseGestures(multiGesture int, zoneTilts map[int]uint8) ui
 	d.deviceLock.Lock()
 	defer d.deviceLock.Unlock()
 
+	if !d.Connected {
+		return 0
+	}
+
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -1067,6 +1107,10 @@ func (d *Device) SaveMouseGestures(multiGesture int, zoneTilts map[int]uint8) ui
 
 // SaveMouseZoneColors will save mouse zone colors
 func (d *Device) SaveMouseZoneColors(dpi rgb.Color, zoneColors map[int]rgb.Color) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	i := 0
 	if d.DeviceProfile == nil {
 		return 0

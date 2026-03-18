@@ -108,6 +108,7 @@ type Device struct {
 	stopRepeat             chan struct{}
 	stopRepeatMutex        sync.Mutex
 	dispatch               dispatcher.DeviceDispatcher
+	checkOnlineMu          sync.Mutex
 }
 
 var (
@@ -138,6 +139,7 @@ var (
 	dataTypeSetColorTopBar  = []byte{0x2b, 0x00}
 	cmdWriteColorExtra      = []byte{0x06, 0x00}
 	cmdActivateExtraColors  = []byte{0x0d, 0x00, 0x2e}
+	cmdHeartbeat            = []byte{0x12}
 	bufferSize              = 64
 	bufferSizeWrite         = bufferSize + 1
 	headerSize              = 2
@@ -292,6 +294,29 @@ func (d *Device) SetConnected(value bool) {
 		d.activeRgb.Exit <- true
 	}
 	d.Connected = value
+}
+
+// checkDeviceOnline will check if device is online
+func (d *Device) checkDeviceOnline() bool {
+	d.checkOnlineMu.Lock()
+	defer d.checkOnlineMu.Unlock()
+
+	for i := 0; i < 10; i++ {
+		_, err := d.transfer(cmdHeartbeat, nil)
+		if err == nil {
+			return true
+		}
+
+		logger.Log(logger.Fields{
+			"error":  err,
+			"serial": d.Serial,
+		}).Warn("Device is offline")
+
+		if i < 9 {
+			time.Sleep(1 * time.Second)
+		}
+	}
+	return false
 }
 
 // Connect will connect to a device
@@ -1037,6 +1062,10 @@ func (d *Device) UpdateRgbProfileData(profileName string, profile rgb.Profile) u
 	d.rgbMutex.Lock()
 	defer d.rgbMutex.Unlock()
 
+	if !d.Connected {
+		return 0
+	}
+
 	if d.GetRgbProfile(profileName) == nil {
 		logger.Log(logger.Fields{"serial": d.Serial, "profile": profile}).Warn("Non-existing RGB profile")
 		return 0
@@ -1102,6 +1131,9 @@ func (d *Device) ChangeDeviceBrightness(mode uint8) uint8 {
 
 // ChangeDeviceBrightnessValue will change device brightness via slider
 func (d *Device) ChangeDeviceBrightnessValue(value uint8) uint8 {
+	if !d.Connected {
+		return 0
+	}
 	if value < 0 || value > 100 {
 		return 0
 	}
@@ -1127,6 +1159,9 @@ func (d *Device) SchedulerBrightness(value uint8) uint8 {
 // ChangeDeviceProfile will change device profile
 func (d *Device) ChangeDeviceProfile(profileName string) uint8 {
 	if profile, ok := d.UserProfiles[profileName]; ok {
+		if !d.Connected {
+			return 0
+		}
 		currentProfile := d.DeviceProfile
 		currentProfile.Active = false
 		d.DeviceProfile = currentProfile
@@ -1458,6 +1493,9 @@ func (d *Device) UpdateDeviceKeyAssignment(keyIndex int, keyAssignment inputmana
 		return 0
 	}
 	if _, ok := d.DeviceProfile.Keyboards[d.DeviceProfile.Profile]; !ok {
+		return 0
+	}
+	if !d.Connected {
 		return 0
 	}
 	for rowId, row := range d.DeviceProfile.Keyboards[d.DeviceProfile.Profile].Row {

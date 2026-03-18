@@ -2358,13 +2358,17 @@ func (d *Device) setupKeyAssignment() {
 		return
 	}
 
+	tilt := 0
 	keys := make([]int, 0)
-	for k := range d.KeyAssignment {
+	for k, v := range d.KeyAssignment {
+		if v.IsTilt {
+			tilt++
+		}
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)
 
-	buf := make([]byte, keyAmount)
+	buf := make([]byte, keyAmount-tilt)
 	i := 0
 	for _, k := range keys {
 		value := d.KeyAssignment[k]

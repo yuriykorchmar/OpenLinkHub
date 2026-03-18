@@ -509,11 +509,10 @@ func (d *Device) UpdatePollingRate(pullingRate int) uint8 {
 
 // ChangeDeviceProfile will change device profile
 func (d *Device) ChangeDeviceProfile(profileName string) uint8 {
-	if !d.Connected {
-		return 0
-	}
-
 	if profile, ok := d.UserProfiles[profileName]; ok {
+		if !d.Connected {
+			return 0
+		}
 		currentProfile := d.DeviceProfile
 		currentProfile.Active = false
 		d.DeviceProfile = currentProfile
@@ -1240,6 +1239,10 @@ func (d *Device) upgradeDpiProfiles() {
 
 // UpdateButtonOptimization will update button response optimization mode
 func (d *Device) UpdateButtonOptimization(buttonOptimizationMode int) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -1257,6 +1260,9 @@ func (d *Device) UpdateButtonOptimization(buttonOptimizationMode int) uint8 {
 // UpdateDeviceKeyAssignment will update device key assignments
 func (d *Device) UpdateDeviceKeyAssignment(keyIndex int, keyAssignment inputmanager.KeyAssignment) uint8 {
 	if val, ok := d.KeyAssignment[keyIndex]; ok {
+		if !d.Connected {
+			return 0
+		}
 		val.Default = keyAssignment.Default
 		val.ActionHold = keyAssignment.ActionHold
 		val.ActionType = keyAssignment.ActionType

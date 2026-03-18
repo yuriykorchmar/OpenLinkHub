@@ -292,6 +292,9 @@ func (d *Device) GetDeviceTemplate() string {
 // ChangeDeviceProfile will change device profile
 func (d *Device) ChangeDeviceProfile(profileName string) uint8 {
 	if profile, ok := d.UserProfiles[profileName]; ok {
+		if !d.Connected {
+			return 0
+		}
 		currentProfile := d.DeviceProfile
 		currentProfile.Active = false
 		d.DeviceProfile = currentProfile
@@ -352,6 +355,10 @@ func (d *Device) SaveUserProfile(profileName string) uint8 {
 
 // SaveMouseDPI will save mouse DPI
 func (d *Device) SaveMouseDPI(stages map[int]uint16) uint8 {
+	if !d.Connected {
+		return 0
+	}
+	
 	i := 0
 	if d.DeviceProfile == nil {
 		return 0
@@ -928,6 +935,10 @@ func (d *Device) getDeviceProfile() {
 
 // UpdateAngleSnapping will update angle snapping mode
 func (d *Device) UpdateAngleSnapping(angleSnappingMode int) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	if d.DeviceProfile == nil {
 		return 0
 	}

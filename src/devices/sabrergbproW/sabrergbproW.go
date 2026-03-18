@@ -119,6 +119,7 @@ type Device struct {
 	MaxDPI                int
 	ZoneAmount            int
 	DPIAmount             int
+	checkOnlineMu         sync.Mutex
 }
 
 var (
@@ -139,6 +140,7 @@ var (
 	cmdWrite                  = []byte{0x06, 0x01}
 	cmdCloseEndpoint          = []byte{0x05, 0x01, 0x01}
 	cmdBatteryLevel           = []byte{0x02, 0x0f}
+	cmdHeartbeat              = []byte{0x12}
 	bufferSize                = 64
 	bufferSizeWrite           = bufferSize + 1
 	headerSize                = 2
@@ -295,9 +297,35 @@ func (d *Device) SetConnected(value bool) {
 	d.Connected = value
 }
 
+// checkDeviceOnline will check if device is online
+func (d *Device) checkDeviceOnline() bool {
+	d.checkOnlineMu.Lock()
+	defer d.checkOnlineMu.Unlock()
+
+	for i := 0; i < 10; i++ {
+		_, err := d.transfer(cmdHeartbeat, nil)
+		if err == nil {
+			return true
+		}
+
+		logger.Log(logger.Fields{
+			"error":  err,
+			"serial": d.Serial,
+		}).Warn("Device is offline")
+
+		if i < 9 {
+			time.Sleep(1 * time.Second)
+		}
+	}
+	return false
+}
+
 // Connect will connect to a device
 func (d *Device) Connect() {
 	if !d.Connected {
+		if !d.checkDeviceOnline() {
+			return
+		}
 		d.Connected = true
 		d.getDeviceFirmware()      // Firmware
 		d.setSoftwareMode()        // Activate software mode
@@ -397,6 +425,9 @@ func (d *Device) GetDeviceTemplate() string {
 // ChangeDeviceProfile will change device profile
 func (d *Device) ChangeDeviceProfile(profileName string) uint8 {
 	if profile, ok := d.UserProfiles[profileName]; ok {
+		if !d.Connected {
+			return 0
+		}
 		currentProfile := d.DeviceProfile
 		currentProfile.Active = false
 		d.DeviceProfile = currentProfile
@@ -571,6 +602,10 @@ func (d *Device) UpdateRgbProfileData(profileName string, profile rgb.Profile) u
 	d.rgbMutex.Lock()
 	defer d.rgbMutex.Unlock()
 
+	if !d.Connected {
+		return 0
+	}
+
 	if d.GetRgbProfile(profileName) == nil {
 		logger.Log(logger.Fields{"serial": d.Serial, "profile": profile}).Warn("Non-existing RGB profile")
 		return 0
@@ -677,6 +712,9 @@ func (d *Device) setupOpenRGBController() {
 
 // ProcessSetOpenRgbIntegration will update OpenRGB integration status
 func (d *Device) ProcessSetOpenRgbIntegration(enabled bool) uint8 {
+	if !d.Connected {
+		return 0
+	}
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -697,6 +735,9 @@ func (d *Device) ProcessSetOpenRgbIntegration(enabled bool) uint8 {
 
 // ProcessSetRgbCluster will update OpenRGB integration status
 func (d *Device) ProcessSetRgbCluster(enabled bool) uint8 {
+	if !d.Connected {
+		return 0
+	}
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -741,6 +782,9 @@ func (d *Device) ChangeDeviceBrightness(mode uint8) uint8 {
 
 // ChangeDeviceBrightnessValue will change device brightness via slider
 func (d *Device) ChangeDeviceBrightnessValue(value uint8) uint8 {
+	if !d.Connected {
+		return 0
+	}
 	if value < 0 || value > 100 {
 		return 0
 	}
@@ -822,6 +866,10 @@ func (d *Device) SaveUserProfile(profileName string) uint8 {
 
 // SaveMouseDPI will save mouse DPI
 func (d *Device) SaveMouseDPI(stages map[int]uint16) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	i := 0
 	if d.DeviceProfile == nil {
 		return 0
@@ -856,6 +904,10 @@ func (d *Device) SaveMouseDPI(stages map[int]uint16) uint8 {
 
 // SaveMouseZoneColors will save mouse zone colors
 func (d *Device) SaveMouseZoneColors(dpi rgb.Color, zoneColors map[int]rgb.Color) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	i := 0
 	if d.DeviceProfile == nil {
 		return 0
@@ -1283,6 +1335,9 @@ func (d *Device) upgradeDpiProfiles() {
 // UpdateDeviceKeyAssignment will update device key assignments
 func (d *Device) UpdateDeviceKeyAssignment(keyIndex int, keyAssignment inputmanager.KeyAssignment) uint8 {
 	if val, ok := d.KeyAssignment[keyIndex]; ok {
+		if !d.Connected {
+			return 0
+		}
 		val.Default = keyAssignment.Default
 		val.ActionHold = keyAssignment.ActionHold
 		val.ActionType = keyAssignment.ActionType
@@ -1872,6 +1927,10 @@ func (d *Device) setDeviceColor() {
 
 // UpdateAngleSnapping will update angle snapping mode
 func (d *Device) UpdateAngleSnapping(angleSnappingMode int) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -1888,6 +1947,10 @@ func (d *Device) UpdateAngleSnapping(angleSnappingMode int) uint8 {
 
 // UpdateButtonOptimization will update button response optimization mode
 func (d *Device) UpdateButtonOptimization(buttonOptimizationMode int) uint8 {
+	if !d.Connected {
+		return 0
+	}
+
 	if d.DeviceProfile == nil {
 		return 0
 	}

@@ -477,11 +477,10 @@ func (d *Device) GetDeviceTemplate() string {
 
 // ChangeDeviceProfile will change device profile
 func (d *Device) ChangeDeviceProfile(profileName string) uint8 {
-	if !d.Connected {
-		return 0
-	}
-
 	if profile, ok := d.UserProfiles[profileName]; ok {
+		if !d.Connected {
+			return 0
+		}
 		currentProfile := d.DeviceProfile
 		currentProfile.Active = false
 		d.DeviceProfile = currentProfile
@@ -618,6 +617,10 @@ func (d *Device) UpdateRgbProfileData(profileName string, profile rgb.Profile) u
 	d.rgbMutex.Lock()
 	defer d.rgbMutex.Unlock()
 
+	if !d.Connected {
+		return 0
+	}
+
 	if d.GetRgbProfile(profileName) == nil {
 		logger.Log(logger.Fields{"serial": d.Serial, "profile": profile}).Warn("Non-existing RGB profile")
 		return 0
@@ -680,6 +683,9 @@ func (d *Device) ChangeDeviceBrightness(mode uint8) uint8 {
 
 // ChangeDeviceBrightnessValue will change device brightness via slider
 func (d *Device) ChangeDeviceBrightnessValue(value uint8) uint8 {
+	if !d.Connected {
+		return 0
+	}
 	if value < 0 || value > 100 {
 		return 0
 	}

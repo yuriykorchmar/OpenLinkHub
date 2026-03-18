@@ -449,6 +449,10 @@ func InitManual(productId uint16, key string) {
 		}
 
 		if info.InterfaceNbr == interfaceId {
+			if len(key) > 0 && info.SerialNbr != key {
+				return nil
+			}
+
 			devPath := info.Path
 			if config.GetConfig().CheckDevicePermission {
 				dev, err := os.Stat(devPath)
