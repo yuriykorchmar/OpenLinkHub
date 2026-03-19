@@ -895,7 +895,7 @@ func SaveJsonData(path string, data interface{}) error {
 
 	file, fileErr := os.Create(path)
 	if fileErr != nil {
-		return err
+		return fileErr
 	}
 
 	_, err = file.Write(buffer)

@@ -117,9 +117,7 @@ func Init() {
 
 		fd, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_DGRAM, NetlinkKernelObjectUEvent)
 		if err != nil {
-			if err != nil {
-				logger.Log(logger.Fields{"error": err}).Error("Error opening sysfs socket")
-			}
+			logger.Log(logger.Fields{"error": err}).Error("Error opening sysfs socket")
 			return
 		}
 		defer func(fd int) {

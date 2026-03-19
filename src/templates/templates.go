@@ -41,7 +41,7 @@ type Web struct {
 	LCDProfiles       map[uint8]interface{}
 	LCDSensors        map[uint8]string
 	InputActions      map[uint16]inputmanager.InputAction
-	Scheduler         *scheduler.Scheduler
+	Scheduler         scheduler.Scheduler
 	Rgb               map[string]rgb.Profile
 	SystemInfo        interface{}
 	Stats             interface{}

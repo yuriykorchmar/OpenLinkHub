@@ -11,6 +11,7 @@ import (
 	"OpenLinkHub/src/logger"
 	"encoding/json"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -26,7 +27,9 @@ var (
 	scheduler   Scheduler
 	upgrade     = map[string]any{}
 	layout      = "15:04"
-	timer       = &time.Ticker{}
+	mu          sync.Mutex
+	timer       *time.Ticker
+	stopChan    chan struct{}
 	refreshTime = 5000
 )
 
@@ -42,24 +45,31 @@ func Init() {
 	location = config.GetConfig().ConfigPath + "/database/scheduler.json"
 	upgradeFile()
 	file, err := os.Open(location)
-	defer func(file *os.File) {
-		err = file.Close()
-		if err != nil {
-			logger.Log(logger.Fields{"error": err, "file": location}).Error("Failed to close file.")
-		}
-	}(file)
 
 	if err != nil {
-		logger.Log(logger.Fields{"error": err, "file": location}).Error("Failed to decode json")
-	}
-	if err = json.NewDecoder(file).Decode(&scheduler); err != nil {
-		logger.Log(logger.Fields{"error": err, "file": location}).Error("Failed to decode json")
+		logger.Log(logger.Fields{"error": err, "file": location}).Error("Failed to open scheduler file")
+		return
 	}
 
-	if scheduler.RGBControl {
-		go func() {
-			startTasks()
-		}()
+	defer func() {
+		if err := file.Close(); err != nil {
+			logger.Log(logger.Fields{"error": err, "file": location}).Error("Failed to close file")
+		}
+	}()
+
+	var loaded Scheduler
+	if err = json.NewDecoder(file).Decode(&loaded); err != nil {
+		logger.Log(logger.Fields{"error": err, "file": location}).Error("Failed to decode json")
+		return
+	}
+
+	mu.Lock()
+	scheduler = loaded
+	enabled := scheduler.RGBControl
+	mu.Unlock()
+
+	if enabled {
+		startTasks()
 	}
 }
 
@@ -86,25 +96,55 @@ func UpdateRgbSettings(enabled bool, start, end string) uint8 {
 		return 0
 	}
 
+	mu.Lock()
 	scheduler.RGBOff = rgbOff.Format(layout)
 	scheduler.RGBOn = rgbOn.Format(layout)
 	scheduler.RGBControl = enabled
-	SaveSchedulerSettings(scheduler)
-	timer.Stop()
-	if scheduler.RGBControl {
+	current := scheduler
+	mu.Unlock()
+
+	SaveSchedulerSettings(current)
+	if current.RGBControl {
 		startTasks()
+	} else {
+		stopTasks()
 	}
+
 	return 1
 }
 
 // GetScheduler will return current scheduler settings
-func GetScheduler() *Scheduler {
-	return &scheduler
+func GetScheduler() Scheduler {
+	mu.Lock()
+	defer mu.Unlock()
+	return scheduler
+}
+
+// stopTasks will stop tasks
+func stopTasks() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if timer != nil {
+		timer.Stop()
+		timer = nil
+	}
+	if stopChan != nil {
+		close(stopChan)
+		stopChan = nil
+	}
 }
 
 func startTasks() {
-	scheduledTimeOff, _ := time.Parse("15:04", scheduler.RGBOff)
-	scheduledTimeOn, _ := time.Parse("15:04", scheduler.RGBOn)
+	stopTasks()
+
+	mu.Lock()
+	rgbOff := scheduler.RGBOff
+	rgbOn := scheduler.RGBOn
+	mu.Unlock()
+
+	scheduledTimeOff, _ := time.Parse("15:04", rgbOff)
+	scheduledTimeOn, _ := time.Parse("15:04", rgbOn)
 
 	isInOffRange := func(now, off, on time.Time) bool {
 		offToday := time.Date(now.Year(), now.Month(), now.Day(), off.Hour(), off.Minute(), 0, 0, now.Location())
@@ -120,16 +160,28 @@ func startTasks() {
 	timeNow := time.Now()
 	time.Sleep(time.Duration(refreshTime) * time.Millisecond) // Wait for 5 seconds
 	if isInOffRange(timeNow, scheduledTimeOff, scheduledTimeOn) {
+		mu.Lock()
 		if !scheduler.LightsOut {
 			scheduler.LightsOut = true
+			current := scheduler
+			mu.Unlock()
+
 			devices.ScheduleDeviceBrightness(0)
-			SaveSchedulerSettings(scheduler)
+			SaveSchedulerSettings(current)
+		} else {
+			mu.Unlock()
 		}
 	} else {
+		mu.Lock()
 		if scheduler.LightsOut {
 			scheduler.LightsOut = false
+			current := scheduler
+			mu.Unlock()
+
 			devices.ScheduleDeviceBrightness(1)
-			SaveSchedulerSettings(scheduler)
+			SaveSchedulerSettings(current)
+		} else {
+			mu.Unlock()
 		}
 	}
 
@@ -139,10 +191,16 @@ func startTasks() {
 			Hour:   scheduledTimeOff.Hour(),
 			Minute: scheduledTimeOff.Minute(),
 			Action: func() {
+				mu.Lock()
 				if !scheduler.LightsOut {
 					scheduler.LightsOut = true
+					current := scheduler
+					mu.Unlock()
+
 					devices.ScheduleDeviceBrightness(0)
-					SaveSchedulerSettings(scheduler)
+					SaveSchedulerSettings(current)
+				} else {
+					mu.Unlock()
 				}
 			},
 		},
@@ -150,28 +208,42 @@ func startTasks() {
 			Hour:   scheduledTimeOn.Hour(),
 			Minute: scheduledTimeOn.Minute(),
 			Action: func() {
+				mu.Lock()
 				if scheduler.LightsOut {
 					scheduler.LightsOut = false
+					current := scheduler
+					mu.Unlock()
+
 					devices.ScheduleDeviceBrightness(1)
-					SaveSchedulerSettings(scheduler)
+					SaveSchedulerSettings(current)
+				} else {
+					mu.Unlock()
 				}
 			},
 		},
 	}
 
-	timer = time.NewTicker(time.Duration(refreshTime) * time.Millisecond)
-	go func() {
+	mu.Lock()
+	localStop := make(chan struct{})
+	localTimer := time.NewTicker(time.Duration(refreshTime) * time.Millisecond)
+	stopChan = localStop
+	timer = localTimer
+	mu.Unlock()
+
+	go func(t *time.Ticker, stop <-chan struct{}) {
 		for {
 			select {
-			case now := <-timer.C:
+			case now := <-t.C:
 				for _, schedule := range schedules {
 					if now.Hour() == schedule.Hour && now.Minute() == schedule.Minute {
 						go schedule.Action()
 					}
 				}
+			case <-stop:
+				return
 			}
 		}
-	}()
+	}(localTimer, localStop)
 }
 
 // upgradeFile will perform json file upgrade or create initial file
@@ -197,17 +269,16 @@ func upgradeFile() {
 		save := false
 		var data map[string]interface{}
 		file, err := os.Open(location)
-		defer func(file *os.File) {
-			err = file.Close()
-			if err != nil {
-				logger.Log(logger.Fields{"error": err, "file": location}).Error("Failed to close file.")
-			}
-		}(file)
-
 		if err != nil {
 			logger.Log(logger.Fields{"error": err, "file": location}).Error("Unable to open file.")
 			panic(err.Error())
 		}
+		defer func() {
+			if err := file.Close(); err != nil {
+				logger.Log(logger.Fields{"error": err, "file": location}).Error("Failed to close file.")
+			}
+		}()
+
 		if err = json.NewDecoder(file).Decode(&data); err != nil {
 			logger.Log(logger.Fields{"error": err, "file": location}).Error("Unable to decode file.")
 			panic(err.Error())
