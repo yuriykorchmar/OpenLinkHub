@@ -2636,6 +2636,8 @@ table.dataTable.compact tbody td {
 .keyboard-row-19 { display: grid; grid-template-columns: repeat(19, var(--kb-key)); grid-gap: var(--kb-gap); }
 .keyboard-row-20 { display: grid; grid-template-columns: repeat(20, var(--kb-key)); grid-gap: var(--kb-gap); }
 .keyboard-row-21 { display: grid; grid-template-columns: repeat(21, var(--kb-key)); grid-gap: var(--kb-gap); }
+.keyboard-row-22 { display: grid; grid-template-columns: repeat(22, var(--kb-key)); grid-gap: var(--kb-gap); }
+.keyboard-row-23 { display: grid; grid-template-columns: repeat(23, var(--kb-key)); grid-gap: var(--kb-gap); }
 .keyboard-row-24 { display: grid; grid-template-columns: repeat(24, var(--kb-key)); grid-gap: var(--kb-gap); }
 .keyboard-row-25 { display: grid; grid-template-columns: repeat(25, var(--kb-key)); grid-gap: var(--kb-gap); }
 .keyboard-row-26 { display: grid; grid-template-columns: repeat(26, var(--kb-key)); grid-gap: var(--kb-gap); }

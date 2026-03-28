@@ -121,6 +121,8 @@ const (
 	ProductTypeK95                  = 137
 	ProductTypeVanguard96Pro        = 138
 	ProductTypeVanguard96           = 139
+	ProductTypeVanguard99AirWU      = 140
+	ProductTypeVanguard99AirW       = 141
 	ProductTypeKatarPro             = 201
 	ProductTypeIronClawRgb          = 202
 	ProductTypeIronClawRgbW         = 203

@@ -104,10 +104,12 @@ import (
 	"OpenLinkHub/src/devices/scufenvisionproV2WU"
 	"OpenLinkHub/src/devices/scufenvisionproWU"
 	"OpenLinkHub/src/devices/slipstream"
+	"OpenLinkHub/src/devices/slipstreamV2"
 	"OpenLinkHub/src/devices/st100"
 	"OpenLinkHub/src/devices/strafergbmk2"
 	"OpenLinkHub/src/devices/vanguard96"
 	"OpenLinkHub/src/devices/vanguard96pro"
+	"OpenLinkHub/src/devices/vanguard99airWU"
 	"OpenLinkHub/src/devices/virtuosoSEWU"
 	"OpenLinkHub/src/devices/virtuosoWU"
 	"OpenLinkHub/src/devices/virtuosomaxdongle"
@@ -757,6 +759,7 @@ var deviceRegisterMap = map[uint16]Product{
 	11012: {1, 0, "MAKR 75", makr75WU.Init, nil},                           // MAKR 75
 	11022: {2, 0, "VANGUARD 96 PRO", vanguard96pro.Init, nil},              // VANGUARD 96 PRO
 	11021: {2, 0, "VANGUARD 96", vanguard96.Init, nil},                     // VANGUARD 96
+	11041: {2, 0, "VANGUARD 99 AIR", vanguard99airWU.Init, nil},            // VANGUARD 99 AIR
 	7059:  {1, 0, "KATAR PRO", katarpro.Init, nil},                         // KATAR PRO Gaming Mouse
 	7084:  {1, 0, "KATAR PRO XT", katarproxt.Init, nil},                    // KATAR PRO XT Gaming Mouse
 	7005:  {1, 0, "IRONCLAW RGB", ironclaw.Init, nil},                      // IRONCLAW RGB Gaming Mouse
@@ -801,6 +804,7 @@ var deviceRegisterMap = map[uint16]Product{
 	7039:  {1, 0, "SLIPSTREAM WIRELESS", nil, slipstream.Init},             // CORSAIR DARK CORE RGB PRO SE Gaming Dongle
 	7078:  {1, 0, "SLIPSTREAM WIRELESS", nil, slipstream.Init},             // SLIPSTREAM WIRELESS USB Receiver
 	11008: {1, 0, "SLIPSTREAM WIRELESS", nil, slipstream.Init},             // SLIPSTREAM WIRELESS USB Receiver
+	11035: {1, 0, "SLIPSTREAM WIRELESS", nil, slipstreamV2.Init},           // SLIPSTREAM WIRELESS V2 USB Receiver
 	11050: {1, 0, "SABRE V2 PRO DONGLE", nil, sabrev2prodongle.Init},       // Sabre v2 Pro Ultralight Wireless Dongle
 	7041:  {1, 0, "DARK CORE RGB PRO Gaming Dongle", nil, slipstream.Init}, // DARK CORE RGB PRO Gaming Dongle
 	10754: {4, 0, "VIRTUOSO MAX WIRELESS", nil, virtuosomaxdongle.Init},    // VIRTUOSO MAX WIRELESS
