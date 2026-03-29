@@ -621,6 +621,7 @@
         "txtInvalidImageType": "Image non valide",
         "txtUploadImage": "Téléverser une image",
         "txtLiveRgbSync": "RGB en direct",
-        "txtSensorMultiGpus": "Utilise plusieurs GPU comme source de température, la valeur la plus élevée est utilisée. Peut être appliqué à n’importe quel appareil."
+        "txtSensorMultiGpus": "Utilise plusieurs GPU comme source de température, la valeur la plus élevée est utilisée. Peut être appliqué à n’importe quel appareil.",
+        "txtMiddleColor": "Couleur intermédiaire"
     }
 }

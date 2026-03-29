@@ -621,6 +621,7 @@
     "txtInvalidImageType": "Nevažeća slika",
     "txtUploadImage": "Prenesi sliku",
     "txtLiveRgbSync": "RGB uživo",
-    "txtSensorMultiGpus": "Koristi više GPU-ova kao izvor temperature, pri čemu se koristi veća vrijednost. Može se primijeniti na bilo koji uređaj."
+    "txtSensorMultiGpus": "Koristi više GPU-ova kao izvor temperature, pri čemu se koristi veća vrijednost. Može se primijeniti na bilo koji uređaj.",
+    "txtMiddleColor": "Srednja boja"
   }
 }

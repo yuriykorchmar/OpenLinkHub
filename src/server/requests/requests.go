@@ -44,6 +44,7 @@ type Payload struct {
 	Color                         rgb.Color             `json:"color"`
 	StartColor                    rgb.Color             `json:"startColor"`
 	EndColor                      rgb.Color             `json:"endColor"`
+	MiddleColor                   rgb.Color             `json:"middleColor"`
 	TextColor                     rgb.Color             `json:"textColor"`
 	Arcs                          map[uint8]lcd.Arcs    `json:"arcs"`
 	Sensors                       map[uint8]lcd.Sensors `json:"sensors"`
@@ -378,7 +379,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 			Status:  0,
 		}
 	}
-	
+
 	deviceId := ""
 	channelId := 0
 	if sensor == temperatures.SensorTypeStorage {
@@ -672,6 +673,15 @@ func ProcessUpdateRgbProfile(r *http.Request) *Payload {
 		return &Payload{Message: language.GetValue("txtInvalidColorSelected"), Code: http.StatusOK, Status: 0}
 	}
 
+	// Middle color
+	if req.MiddleColor.Red > 255 || req.MiddleColor.Green > 255 || req.MiddleColor.Blue > 255 {
+		return &Payload{Message: language.GetValue("txtInvalidColorSelected"), Code: http.StatusOK, Status: 0}
+	}
+
+	if req.MiddleColor.Red < 0 || req.MiddleColor.Green < 0 || req.MiddleColor.Blue < 0 {
+		return &Payload{Message: language.GetValue("txtInvalidColorSelected"), Code: http.StatusOK, Status: 0}
+	}
+
 	// Speed
 	if req.Speed < 1 || req.Speed > 10 {
 		return &Payload{Message: language.GetValue("txtInvalidSpeed"), Code: http.StatusOK, Status: 0}
@@ -695,11 +705,14 @@ func ProcessUpdateRgbProfile(r *http.Request) *Payload {
 	endColor := req.EndColor
 	endColor.Brightness = 1
 
+	middleColor := req.MiddleColor
+	middleColor.Brightness = 1
+
 	rgbProfile := rgb.Profile{
 		Speed:           req.Speed,
 		Brightness:      1,
 		StartColor:      startColor,
-		MiddleColor:     rgb.Color{},
+		MiddleColor:     middleColor,
 		EndColor:        endColor,
 		MinTemp:         req.RgbMinTemp,
 		MaxTemp:         req.RgbMaxTemp,
@@ -4256,6 +4269,7 @@ func ProcessSetRgbOverride(r *http.Request) *Payload {
 		req.Enabled,
 		req.StartColor,
 		req.EndColor,
+		req.MiddleColor,
 		req.Speed,
 	)
 

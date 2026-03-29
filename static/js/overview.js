@@ -3469,9 +3469,10 @@ $(document).ready(function () {
                 try {
                     if (response.status === 1) {
                         const data = response.data;
-
+                        console.log(response)
                         const startColor = rgbToHex(data.RGBStartColor.red, data.RGBStartColor.green, data.RGBStartColor.blue);
                         const endColor = rgbToHex(data.RGBEndColor.red, data.RGBEndColor.green, data.RGBEndColor.blue);
+                        const middleColor = rgbToHex(data.RGBMiddleColor.red, data.RGBMiddleColor.green, data.RGBMiddleColor.blue);
 
                         let modalElement = `
                           <div class="modal fade" id="systemModal" tabindex="-1" aria-hidden="true">
@@ -3484,7 +3485,7 @@ $(document).ready(function () {
                                 </div>
                                 <div class="modal-body">
                                     <div class="settings-list">
-                                        <div class="settings-row">
+                                        <div class="settings-row ">
                                             <span class="settings-label text-ellipsis">${i18n.t('txtEnable')}</span>
                                             <label class="system-toggle compact">
                                                 <input type="checkbox" id="enabledCheckbox" ${data.Enabled ? "checked" : ""}>
@@ -3492,19 +3493,35 @@ $(document).ready(function () {
                                             </label>
                                         </div>
     
-                                        <div class="settings-row">
+                                        <div class="settings-row rgb-editor">
                                             <span class="settings-label text-ellipsis">${i18n.t('txtStartColor')}</span>
                                             <div class="system-color">
                                                 <label for="startColor">
                                                     <input type="color" id="startColor" value="${startColor}">
                                                 </label>
                                             </div>
+                                            <div class="system-input text-input max-width-60">
+                                                <input type="text" class="rgb-color-start" id="startColorTemp" value="${data.RGBStartColor.temperature}">
+                                            </div>
                                         </div>
                                         
-                                        <div class="settings-row">
+                                        <div class="settings-row rgb-editor">
+                                            <span class="settings-label text-ellipsis">${i18n.t('txtMiddleColor')}</span>
+                                            <div class="system-color">
+                                                    <input type="color" class="system-color" id="middleColor" value="${middleColor}">
+                                            </div>
+                                            <div class="system-input text-input max-width-60">
+                                                <input type="text" class="rgb-color-start" id="middleColorTemp" value="${data.RGBMiddleColor.temperature}">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="settings-row rgb-editor">
                                             <span class="settings-label text-ellipsis">${i18n.t('txtEndColor')}</span>
                                             <div class="system-color">
                                                     <input type="color" class="system-color" id="endColor" value="${endColor}">
+                                            </div>
+                                            <div class="system-input text-input max-width-60">
+                                                <input type="text" class="rgb-color-start" id="endColorTemp" value="${data.RGBEndColor.temperature}">
                                             </div>
                                         </div>
                                         
@@ -3561,16 +3578,25 @@ $(document).ready(function () {
                                 const pf = {};
                                 let startColorRgb = {}
                                 let endColorRgb = {}
+                                let middleColorRgb = {}
 
                                 let speed = $("#speedSlider").val();
                                 const startColorVal = $("#startColor").val();
                                 const endColorVal = $("#endColor").val();
+                                const middleColorVal = $("#middleColor").val();
+
+                                const startColorTemp = $("#startColorTemp").val();
+                                const endColorTemp = $("#endColorTemp").val();
+                                const middleColorTemp = $("#middleColorTemp").val();
 
                                 const startColor = hexToRgb(startColorVal);
-                                startColorRgb = {red:startColor.r, green:startColor.g, blue:startColor.b}
+                                startColorRgb = {red:startColor.r, green:startColor.g, blue:startColor.b, temperature: parseFloat(startColorTemp)}
 
                                 const endColor = hexToRgb(endColorVal);
-                                endColorRgb = {red:endColor.r, green:endColor.g, blue:endColor.b}
+                                endColorRgb = {red:endColor.r, green:endColor.g, blue:endColor.b, temperature: parseFloat(endColorTemp)}
+
+                                const middleColor = hexToRgb(middleColorVal);
+                                middleColorRgb = {red:middleColor.r, green:middleColor.g, blue:middleColor.b, temperature: parseFloat(middleColorTemp)}
 
                                 const enabled = $("#enabledCheckbox").is(':checked');
 
@@ -3580,6 +3606,7 @@ $(document).ready(function () {
                                 pf["enabled"] = enabled;
                                 pf["startColor"] = startColorRgb;
                                 pf["endColor"] = endColorRgb;
+                                pf["middleColor"] = middleColorRgb;
                                 pf["speed"] = parseFloat(speed);
 
                                 const json = JSON.stringify(pf, null, 2);

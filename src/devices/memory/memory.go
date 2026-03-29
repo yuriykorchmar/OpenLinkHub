@@ -29,10 +29,11 @@ import (
 )
 
 type RGBOverride struct {
-	Enabled       bool
-	RGBStartColor rgb.Color
-	RGBEndColor   rgb.Color
-	RgbModeSpeed  float64
+	Enabled        bool
+	RGBStartColor  rgb.Color
+	RGBEndColor    rgb.Color
+	RGBMiddleColor rgb.Color
+	RgbModeSpeed   float64
 }
 
 type TemperatureProbe struct {
@@ -423,7 +424,17 @@ func (d *Device) upgradeRgbProfile(path string, profiles []string) {
 			}
 		}
 	}
+	for key, val := range d.Rgb.Profiles {
+		template := rgb.GetRgbProfile(key)
+		if template == nil {
+			continue
+		}
 
+		if val.Version != template.Version {
+			d.Rgb.Profiles[key] = *template
+			save = true
+		}
+	}
 	if save {
 		if err := common.SaveJsonData(path, d.Rgb); err != nil {
 			logger.Log(logger.Fields{"error": err, "location": path}).Error("Unable to upgrade rgb profile data")
@@ -905,18 +916,28 @@ func (d *Device) saveDeviceProfile() {
 				0: {
 					Enabled: false,
 					RGBStartColor: rgb.Color{
-						Red:        0,
-						Green:      255,
-						Blue:       255,
-						Brightness: 1,
-						Hex:        "#00ffff",
+						Red:         0,
+						Green:       255,
+						Blue:        255,
+						Brightness:  1,
+						Hex:         "#00ffff",
+						Temperature: 20,
+					},
+					RGBMiddleColor: rgb.Color{
+						Red:         0,
+						Green:       255,
+						Blue:        255,
+						Brightness:  1,
+						Hex:         "#00ffff",
+						Temperature: 40,
 					},
 					RGBEndColor: rgb.Color{
-						Red:        0,
-						Green:      255,
-						Blue:       255,
-						Brightness: 1,
-						Hex:        "#00ffff",
+						Red:         0,
+						Green:       255,
+						Blue:        255,
+						Brightness:  1,
+						Hex:         "#00ffff",
+						Temperature: 60,
 					},
 					RgbModeSpeed: 3,
 				},
@@ -927,18 +948,28 @@ func (d *Device) saveDeviceProfile() {
 					0: {
 						Enabled: false,
 						RGBStartColor: rgb.Color{
-							Red:        0,
-							Green:      255,
-							Blue:       255,
-							Brightness: 1,
-							Hex:        "#00ffff",
+							Red:         0,
+							Green:       255,
+							Blue:        255,
+							Brightness:  1,
+							Hex:         "#00ffff",
+							Temperature: 20,
+						},
+						RGBMiddleColor: rgb.Color{
+							Red:         0,
+							Green:       255,
+							Blue:        255,
+							Brightness:  1,
+							Hex:         "#00ffff",
+							Temperature: 40,
 						},
 						RGBEndColor: rgb.Color{
-							Red:        0,
-							Green:      255,
-							Blue:       255,
-							Brightness: 1,
-							Hex:        "#00ffff",
+							Red:         0,
+							Green:       255,
+							Blue:        255,
+							Brightness:  1,
+							Hex:         "#00ffff",
+							Temperature: 60,
 						},
 						RgbModeSpeed: 3,
 					},
@@ -1248,9 +1279,11 @@ func (d *Device) setDeviceColor() {
 					if rgbCustomColor {
 						r.RGBStartColor = &profile.StartColor
 						r.RGBEndColor = &profile.EndColor
+						r.RGBMiddleColor = &profile.MiddleColor
 					} else {
 						r.RGBStartColor = d.activeRgb.RGBStartColor
 						r.RGBEndColor = d.activeRgb.RGBEndColor
+						r.RGBMiddleColor = d.activeRgb.RGBMiddleColor
 					}
 
 					index := 0
@@ -1258,6 +1291,7 @@ func (d *Device) setDeviceColor() {
 					if rgbOverride != nil && rgbOverride.Enabled && d.Devices[k].LedChannels > 0 {
 						r.RGBStartColor = &rgbOverride.RGBStartColor
 						r.RGBEndColor = &rgbOverride.RGBEndColor
+						r.RGBMiddleColor = &rgbOverride.RGBMiddleColor
 						r.RgbModeSpeed = common.FClamp(rgbOverride.RgbModeSpeed, 0.1, 10)
 					}
 
@@ -1265,12 +1299,14 @@ func (d *Device) setDeviceColor() {
 					r.RGBBrightness = rgb.GetBrightnessValueFloat(*d.DeviceProfile.BrightnessSlider)
 					r.RGBStartColor.Brightness = r.RGBBrightness
 					r.RGBEndColor.Brightness = r.RGBBrightness
+					r.RGBMiddleColor.Brightness = r.RGBBrightness
 
 					// Global override
 					if d.GlobalBrightness != 0 {
 						r.RGBBrightness = rgb.GetBrightnessValue(d.DeviceProfile.Brightness)
 						r.RGBStartColor.Brightness = r.RGBBrightness
 						r.RGBEndColor.Brightness = r.RGBBrightness
+						r.RGBMiddleColor.Brightness = r.RGBBrightness
 					}
 					r.ChannelId = k
 
@@ -1791,10 +1827,25 @@ func (d *Device) UpdateRgbProfileData(profileName string, profile rgb.Profile) u
 	if pf == nil {
 		return 0
 	}
+
+	if profile.StartColor.Temperature < 0 || profile.StartColor.Temperature > 105 {
+		return 0
+	}
+
+	if profile.MiddleColor.Temperature < 0 || profile.MiddleColor.Temperature > 105 {
+		return 0
+	}
+
+	if profile.EndColor.Temperature < 0 || profile.EndColor.Temperature > 105 {
+		return 0
+	}
+
 	profile.StartColor.Brightness = pf.StartColor.Brightness
 	profile.EndColor.Brightness = pf.EndColor.Brightness
+	profile.MiddleColor.Brightness = pf.MiddleColor.Brightness
 	pf.StartColor = profile.StartColor
 	pf.EndColor = profile.EndColor
+	pf.MiddleColor = profile.MiddleColor
 	pf.Speed = profile.Speed
 	pf.Gradients = profile.Gradients
 
@@ -1914,7 +1965,7 @@ func (d *Device) ProcessSetRgbCluster(enabled bool) uint8 {
 }
 
 // ProcessSetRgbOverride will update RGB override settings
-func (d *Device) ProcessSetRgbOverride(channelId, subDeviceId int, enabled bool, startColor, endColor rgb.Color, speed float64) uint8 {
+func (d *Device) ProcessSetRgbOverride(channelId, subDeviceId int, enabled bool, startColor, endColor, middleColor rgb.Color, speed float64) uint8 {
 	if d.DeviceProfile == nil {
 		return 0
 	}
@@ -1928,12 +1979,26 @@ func (d *Device) ProcessSetRgbOverride(channelId, subDeviceId int, enabled bool,
 		return 0
 	}
 
+	if startColor.Temperature < 0 || startColor.Temperature > 105 {
+		return 0
+	}
+
+	if middleColor.Temperature < 0 || middleColor.Temperature > 105 {
+		return 0
+	}
+
+	if endColor.Temperature < 0 || endColor.Temperature > 105 {
+		return 0
+	}
+
 	rgbOverride.Enabled = enabled
 	rgbOverride.RGBStartColor = startColor
 	rgbOverride.RGBEndColor = endColor
+	rgbOverride.RGBMiddleColor = middleColor
 	rgbOverride.RgbModeSpeed = speed
 	rgbOverride.RGBStartColor.Brightness = 1
 	rgbOverride.RGBEndColor.Brightness = 1
+	rgbOverride.RGBMiddleColor.Brightness = 1
 
 	d.setRgbOverride(channelId, subDeviceId, *rgbOverride)
 	d.saveDeviceProfile()

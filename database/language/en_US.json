@@ -621,6 +621,7 @@
     "txtInvalidImageType": "Invalid image",
     "txtUploadImage": "Upload Image",
     "txtLiveRgbSync": "Live RGB",
-    "txtSensorMultiGpus": "Utilizes the multiple GPUs as temperature source, higher number wins. It can be applied to any device."
+    "txtSensorMultiGpus": "Utilizes the multiple GPUs as temperature source, higher number wins. It can be applied to any device.",
+    "txtMiddleColor": "Middle Color"
   }
 }

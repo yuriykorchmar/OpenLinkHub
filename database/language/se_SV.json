@@ -621,6 +621,7 @@
     "txtInvalidImageType": "Ogiltig bild",
     "txtUploadImage": "Ladda upp bild",
     "txtLiveRgbSync": "Live RGB",
-    "txtSensorMultiGpus": "Använder flera GPU:er som temperaturkälla, det högsta värdet används. Kan tillämpas på alla enheter."
+    "txtSensorMultiGpus": "Använder flera GPU:er som temperaturkälla, det högsta värdet används. Kan tillämpas på alla enheter.",
+    "txtMiddleColor": "Mellanfärg"
   }
 }

@@ -14,12 +14,13 @@ type HSL struct {
 }
 
 type Color struct {
-	Red        float64 `json:"red"`
-	Green      float64 `json:"green"`
-	Blue       float64 `json:"blue"`
-	Brightness float64 `json:"brightness"`
-	Position   float64 `json:"position"`
-	Hex        string
+	Red         float64 `json:"red"`
+	Green       float64 `json:"green"`
+	Blue        float64 `json:"blue"`
+	Brightness  float64 `json:"brightness"`
+	Position    float64 `json:"position"`
+	Temperature float64 `json:"temperature"`
+	Hex         string
 }
 
 type RGB struct {
@@ -42,6 +43,7 @@ type Profile struct {
 	AlternateColors bool          `json:"alternateColors"`
 	RgbDirection    byte          `json:"rgbDirection"`
 	PerLed          bool          `json:"perLed"`
+	Version         int           `json:"version"`
 }
 
 type LastCycle struct {
@@ -56,6 +58,7 @@ type ActiveRGB struct {
 	RgbModeSpeed           float64
 	RGBEndColor            *Color
 	RGBStartColor          *Color
+	RGBMiddleColor         *Color
 	PreviousColor          *Color
 	Gradients              []Color
 	GradientList           map[int]Color
