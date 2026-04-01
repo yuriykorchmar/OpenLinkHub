@@ -82,6 +82,7 @@ var (
 		4: "GPU Load",
 	}
 	sensorTextCache = make(map[uint8]string)
+	lcdPresent      = false
 )
 
 type ImageData struct {
@@ -124,6 +125,13 @@ var lcd LCD
 // Init will initialize LCD data
 func Init() {
 	lcdDevices = make(map[string]uint16)
+	lcdPresent = false
+	
+	checkForLcd()
+	if !lcdPresent {
+		logger.Log(logger.Fields{}).Info("No valid LCD devices found")
+		return
+	}
 
 	// Open image
 	file, e := os.Open(location)
@@ -1212,6 +1220,26 @@ func loadLcdImages() {
 			logger.Log(logger.Fields{"error": err, "location": images, "image": imagePath}).Warn("Invalid image extension")
 			continue
 		}
+	}
+}
+
+// checkForLcd will check for LCD presence
+func checkForLcd() {
+	lcdProductIds := []uint16{3150, 3139, 3129, 3123}
+	enum := hid.EnumFunc(func(info *hid.DeviceInfo) error {
+		if info.InterfaceNbr == 0 {
+			if slices.Contains(lcdProductIds, info.ProductID) {
+				lcdPresent = true
+			}
+		}
+		return nil
+	})
+
+	// Enumerate all Corsair devices
+	err := hid.Enumerate(vendorId, hid.ProductIDAny, enum)
+	if err != nil {
+		logger.Log(logger.Fields{"error": err, "vendorId": vendorId}).Error("Unable to enumerate LCD devices")
+		return
 	}
 }
 
