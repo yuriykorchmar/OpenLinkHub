@@ -81,7 +81,7 @@ Or use the provided devcontainer in VScode. This is useful for immutable distrib
 ```bash
 $ git clone https://github.com/jurkovic-nikola/OpenLinkHub.git
 $ cd OpenLinkHub/
-$ go build .
+$ CGO_CFLAGS_ALLOW='-fno-strict-overflow' go build .
 $ chmod +x install.sh
 $ sudo ./install.sh
 ```

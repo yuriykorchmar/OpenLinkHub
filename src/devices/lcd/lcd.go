@@ -126,7 +126,7 @@ var lcd LCD
 func Init() {
 	lcdDevices = make(map[string]uint16)
 	lcdPresent = false
-	
+
 	checkForLcd()
 	if !lcdPresent {
 		logger.Log(logger.Fields{}).Info("No valid LCD devices found")
@@ -1225,7 +1225,7 @@ func loadLcdImages() {
 
 // checkForLcd will check for LCD presence
 func checkForLcd() {
-	lcdProductIds := []uint16{3150, 3139, 3129, 3123}
+	lcdProductIds := []uint16{3150, 3139, 3129, 3123, 3159, 3157, 3138}
 	enum := hid.EnumFunc(func(info *hid.DeviceInfo) error {
 		if info.InterfaceNbr == 0 {
 			if slices.Contains(lcdProductIds, info.ProductID) {

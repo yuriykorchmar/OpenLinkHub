@@ -79,7 +79,7 @@ Você também pode usar o devcontainer fornecido para o VScode. Isso é útil pa
 ```bash
 $ git clone https://github.com/jurkovic-nikola/OpenLinkHub.git
 $ cd OpenLinkHub/
-$ go build .
+$ CGO_CFLAGS_ALLOW='-fno-strict-overflow' go build .
 $ chmod +x install.sh
 $ sudo ./install.sh
 ```
