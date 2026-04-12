@@ -2819,6 +2819,16 @@ func (d *Device) ProcessSetRgbCluster(enabled bool) uint8 {
 		return 2
 	}
 
+	lightChannels := 0
+	for k := range d.RgbDevices {
+		lightChannels += int(d.RgbDevices[k].LedChannels)
+	}
+
+	if lightChannels == 0 {
+		logger.Log(logger.Fields{"serial": d.Serial}).Warn("No compatible RGB devices found. RGB Cluster is unavailable")
+		return 0
+	}
+
 	d.DeviceProfile.RGBCluster = enabled
 	d.saveDeviceProfile() // Save profile
 	if d.activeRgb != nil {
@@ -2828,18 +2838,12 @@ func (d *Device) ProcessSetRgbCluster(enabled bool) uint8 {
 	d.setDeviceColor()
 
 	if enabled {
-		lightChannels := 0
-		for k := range d.RgbDevices {
-			lightChannels += int(d.RgbDevices[k].LedChannels)
-		}
-
 		clusterController := &common.ClusterController{
 			Product:      d.Product,
 			Serial:       d.Serial,
 			LedChannels:  uint32(lightChannels),
 			WriteColorEx: d.writeColorCluster,
 		}
-
 		cluster.Get().AddDeviceController(clusterController)
 	} else {
 		cluster.Get().RemoveDeviceControllerBySerial(d.Serial)
