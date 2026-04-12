@@ -309,6 +309,7 @@ var (
 		"nebula",
 		"off",
 		"probe-temperature",
+		"rain",
 		"rainbow",
 		"pastelrainbow",
 		"rotarystack",
@@ -327,6 +328,7 @@ var (
 		"led",
 		"nebula",
 		"marquee",
+		"rain",
 		"rotarystack",
 		"sequential",
 		"spiralrainbow",
@@ -4558,6 +4560,11 @@ func (d *Device) generateRgbEffect(k int, channels uint8, startTime *time.Time, 
 	case "arc":
 		{
 			r.Arc(*startTime)
+			buff = r.Output
+		}
+	case "rain":
+		{
+			r.Rain(*startTime)
 			buff = r.Output
 		}
 	case "watercolor":

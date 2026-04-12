@@ -233,6 +233,25 @@ func lerpColor(c1, c2 Color, t float64) (int, int, int) {
 	return int(math.Round(r)), int(math.Round(g)), int(math.Round(b))
 }
 
+// clampFloat01 will clamp float64 from 0 to 1
+func clampFloat01(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}
+
+func random01(values ...float64) float64 {
+	sum := 0.0
+	for i, v := range values {
+		sum += math.Sin(v*12.9898+float64(i)*78.233) * 43758.5453
+	}
+	return math.Abs(math.Mod(sum, 1.0))
+}
+
 // New will create new ActiveRGB struct for RGB control
 func New(
 	lightChannels int,
