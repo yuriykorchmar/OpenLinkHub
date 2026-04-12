@@ -677,7 +677,7 @@
           }
         },
         "62": {
-          "keyName": "Ins",
+          "keyName": "Einfg",
           "width": 65,
           "height": 70,
           "left": 25,
@@ -694,7 +694,7 @@
           }
         },
         "63": {
-          "keyName": "Home",
+          "keyName": "Pos1",
           "width": 65,
           "height": 70,
           "left": 15,
@@ -710,7 +710,7 @@
           }
         },
         "64": {
-          "keyName": "PgUp",
+          "keyName": "Bild↑",
           "width": 65,
           "height": 70,
           "left": 15,
