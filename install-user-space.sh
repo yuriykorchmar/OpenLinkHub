@@ -29,7 +29,7 @@ else
     # Loop through system GIDs to find a free one
     for gid in $(seq 999 -1 900); do
         if ! getent group "$gid" >/dev/null; then
-            sudo groupadd -g "$gid" "$SEARCH_FOR"
+            run0 -i groupadd -g "$gid" "$SEARCH_FOR"
             echo "Created group '$SEARCH_FOR' with GID $gid"
             break
         fi
@@ -39,7 +39,7 @@ fi
 if id -nG "$USER_TO_CHECK" | grep -qw "$SEARCH_FOR"; then
     echo "$USER_TO_CHECK is already in $SEARCH_FOR"
 else
-    sudo usermod -aG "$SEARCH_FOR" "$USER_TO_CHECK"
+    run0 -i usermod -aG "$SEARCH_FOR" "$USER_TO_CHECK"
     echo "Added $USER_TO_CHECK to $SEARCH_FOR"
 fi
 
@@ -73,12 +73,12 @@ fi
 
 echo "Copy device permission file $PERMISSION_FILE to $PERMISSION_DIR"
 sed -i -e "s/$SEARCH_FOR_GROUP/$REPLACE_WITH/g" $PERMISSION_FILE
-sudo cp "$CURRENT_DIR/$PERMISSION_FILE" $PERMISSION_DIR
-sudo chmod -x $PERMISSION_DIR
+run0 -i cp "$CURRENT_DIR/$PERMISSION_FILE" $PERMISSION_DIR
+run0 -i chmod -x $PERMISSION_DIR
 
 echo "Reloading permissions..."
-sudo udevadm control --reload-rules
-sudo udevadm trigger
+run0 -i udevadm control --reload-rules
+run0 -i udevadm trigger
 
 echo "Setting folder permissions..."
 chmod -R 755 "$CURRENT_DIR"
