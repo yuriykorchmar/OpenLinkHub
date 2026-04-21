@@ -1,3 +1,22 @@
+## 2026-04-19
+
+* add 0x00 for temperature status (2293a56)
+* log temperature packet (3a1bc2e)
+
+## 2026-04-18
+
+* Merge pull request #400 from x9cf9w73cv7y/main (fd46ef0)
+
+## 2026-04-16
+
+* Add sudo check for privileged command execution (3c75f2a)
+* Batch privileged operations into a single execution block (83c5258)
+* Replace sudo commands with run0 for user space install (3a002f9)
+
+## 2026-04-14
+
+* template headers (2dedc18)
+
 ## 2026-04-13
 
 * xd5 / xd6 should have temperatureProbe set to true (143339c)
