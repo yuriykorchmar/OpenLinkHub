@@ -1,3 +1,14 @@
+## 2026-04-22
+
+* vanguard 96 wireless (b575e01)
+* missing knob parsing (6d87c71)
+* more dpi stepping (2964665)
+* dpi stepping https://github.com/jurkovic-nikola/OpenLinkHub/issues/404 (0367ef9)
+
+## 2026-04-21
+
+* changelog (6952961)
+
 ## 2026-04-19
 
 * add 0x00 for temperature status (2293a56)

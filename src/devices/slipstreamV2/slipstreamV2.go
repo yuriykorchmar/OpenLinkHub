@@ -165,7 +165,7 @@ func (d *Device) addDevices() {
 				d.SharedDevices(object)
 				d.AddPairedDevice(value.ProductId, dev, object)
 			}
-		case 11023: // VANGUARD 99 AIR
+		case 11023: // VANGUARD 96 WIRELESS
 			{
 				dev := vanguard96W.Init(
 					value.VendorId,
