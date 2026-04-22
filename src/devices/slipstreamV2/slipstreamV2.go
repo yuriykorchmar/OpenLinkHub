@@ -8,6 +8,7 @@ import (
 	"OpenLinkHub/src/common"
 	"OpenLinkHub/src/config"
 	"OpenLinkHub/src/devices/m65rgbultraW"
+	"OpenLinkHub/src/devices/vanguard96W"
 	"OpenLinkHub/src/devices/vanguard99airW"
 	"OpenLinkHub/src/logger"
 	"crypto/rand"
@@ -154,6 +155,30 @@ func (d *Device) addDevices() {
 				object := &common.Device{
 					ProductType: common.ProductTypeVanguard99AirW,
 					Product:     "VANGUARD 99 AIR",
+					Serial:      dev.Serial,
+					Firmware:    dev.Firmware,
+					Image:       "icon-keyboard.svg",
+					Instance:    dev,
+					DeviceType:  common.DeviceTypeKeyboard,
+					ProductId:   value.ProductId,
+				}
+				d.SharedDevices(object)
+				d.AddPairedDevice(value.ProductId, dev, object)
+			}
+		case 11023: // VANGUARD 99 AIR
+			{
+				dev := vanguard96W.Init(
+					value.VendorId,
+					d.ProductId,
+					value.ProductId,
+					d.slipstream,
+					value.Endpoint,
+					value.Serial,
+				)
+
+				object := &common.Device{
+					ProductType: common.ProductTypeVanguard96W,
+					Product:     "VANGUARD 96 WIRELESS",
 					Serial:      dev.Serial,
 					Firmware:    dev.Firmware,
 					Image:       "icon-keyboard.svg",
