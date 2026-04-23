@@ -189,7 +189,13 @@ func NewMacroProfile(macroName string) uint8 {
 		return 0
 	}
 
-	macroId := len(macros) + 1
+	maxID := 0
+	for id := range macros {
+		if id > maxID {
+			maxID = id
+		}
+	}
+	macroId := maxID + 1
 	if _, ok := macros[macroId]; ok {
 		return 0
 	}
